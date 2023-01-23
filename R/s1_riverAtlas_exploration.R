@@ -39,8 +39,8 @@ MIN_VAR <- 1e-3
 # Chemins d'accès --------------------------------------------------------------
 
 
-data_path <- "Data/RiverATLAS_Data_v10_shp/RiverATLAS_v10_shp"
-output_path <- "Data/s1_donnees_filtrees.rds"
+data_path <- "./Data/RiverATLAS_Data_v10_shp/RiverATLAS_v10_shp"
+output_path <- "./Data/s1_donnees_filtrees.rds"
 
 
 # Charger les données pour la région Nord-Américaine (_na) ---------------------

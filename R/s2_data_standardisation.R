@@ -28,8 +28,8 @@ library(tidyverse)
 # Chemins d'accès --------------------------------------------------------------
 
 
-input_path <- "Data/s1_donnees_filtrees.rds"
-output_path <- "Data/s2_donnees_normalisees.rds"
+input_path <- "./Data/s1_donnees_filtrees.rds"
+output_path <- "./Data/s2_donnees_normalisees.rds"
 
 
 # Charger les données ----------------------------------------------------------
@@ -40,7 +40,6 @@ river_df <- readRDS(input_path)
 
 # Standardiser les pourcentages ------------------------------------------------
 
-   
 var_pc <- names(river_df)[names(river_df) %like% "_pc_"]
 summary(river_df[, sort(var_pc)])
 
