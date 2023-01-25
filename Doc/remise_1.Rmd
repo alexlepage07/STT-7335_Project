@@ -82,21 +82,6 @@ kbl(
 
 Nous remarquons qu'une variable ressort du lot avec un pourcentage de 44% de valeurs manquantes soit celle de la classification des zones humides. Or, dans la description des variables de notre jeu de données, [_RiverATLAS Attributes_](https://data.hydrosheds.org/file/technical-documentation/RiverATLAS_Catalog_v10.pdf), on y spécifie que les _-999_'s sont en fait les endroits n'ayant pas de zone humide ce qui explique pourquoi elle n'a pas de classe de zone humide attribuée. Cette classification contient 12 classes. Pour traiter ces cas de _-999_ de cette variable, nous y ajoutons un 13e classe qui équivaut à _aucune zone humide_. Nous remplaçons, donc, les valeurs _-999_ par 13.
 
-<p style="color:blue">Ou on fait juste le laisser à -999?</p> 
-
-![](../inst/img/wet_cl_cmj.png)
-
-Les variables qui possèdent moins de 1% de valeurs manquantes sont tous des variables liées à la constitution du sol :
-
-- Proportion de sable 
-- Proportion d'argile
-- Proportion de limon
-- Quantité moyenne de carbone dans les 5 premiers centimètres de sol
-
-Nous remarquons que ce sont les mêmes observations qui sont manquantes au travers les 4 variables.
-
-<p style="color:blue">Est-ce qu'on pourrait ajouter l'information géographique pour faire de l'interpolation??</p> 
-
 ## 2.2 Réduction de la dimensionalité
 
 
