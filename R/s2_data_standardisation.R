@@ -28,8 +28,8 @@ library(tidyverse)
 # Chemins d'accès --------------------------------------------------------------
 
 
-input_path <- "./Data/s1_donnees_filtrees.rds"
-output_path <- "./Data/s2_donnees_normalisees.rds"
+input_path <- "Data/s1_donnees_filtrees.rds"
+output_path <- "Data/s2_donnees_normalisees.rds"
 
 
 # Charger les données ----------------------------------------------------------
