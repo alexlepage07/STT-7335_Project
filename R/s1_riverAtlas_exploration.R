@@ -1,7 +1,7 @@
-# s1_riverAtlas_exploration.R
+# s1_riverAtlas_preparation.R
 
 
-# Un fichier dédié à l'exploration de données de RiverAtlas
+# Un fichier dédié à l'exploration et la préparation des données de RiverAtlas
 
 
 # Université Laval
@@ -12,7 +12,7 @@
 #  - Helaiem, Amélie
 #  - Hangsin, Andrea
 #  - Ouedraogo, Angelo
-#  - Jocelyn Pellerin
+#  - Pellerin, Jocelyn
 
 # Développeur: Alexandre Lepage (alexandre.lepage.3@ulaval.ca)
 
@@ -43,7 +43,7 @@ data_path <- "Data/RiverATLAS_Data_v10_shp/RiverATLAS_v10_shp"
 output_path <- "Data/s1_donnees_filtrees.rds"
 
 
-# Charger les données pour la région Nord-Américaine (_na) ---------------------
+# Charger les données pour la région Nord-Américaine  --------------------------
 
 
 # Chargement des données sous la forme d'un SpatVector (Vecteur spatial)
@@ -63,9 +63,20 @@ river_atlas_croped
 plot(river_atlas_croped)
 
 
+# Identifier les variables nous permettant de naviguer dans les données.
+navigation_var <- c(
+   "HYRIV_ID",   # Identifiant des segments de rivière
+   "NEXT_DOWN",  # HYRIV_ID du prochain segment en aval 
+   "MAIN_RIV"    # HYRIV_ID du segment de rivière le plus en aval de ce bassin
+)
+head(as.data.frame(river_atlas_croped[, navigation_var]), 20)
+summary(river_atlas_croped[, navigation_var])
+
+
 # Filtrer les champs qui nous intéressent
 variables <- c(
    "dis_m3_pyr",  # Notre variable endogène: Le débit d'eau moyen
+   "LENGTH_KM",   # Longueur du segment de la rivière
    "rev_mc_usu",  # Le volume du réservoir d'eau
    "dor_pc_pva",  # Index informant sur l'effet des barrages sur le débit d'eau
    "lka_pc_cse", "lka_pc_use",  # Pourcentage de terre qui correspond à des lacs
@@ -99,8 +110,7 @@ variables <- c(
 data_names <- names(river_atlas_croped)
 assertthat::assert_that(length(variables[!(variables %in% data_names)]) == 0) 
 
-river_atlas_filtered <- river_atlas_croped[, variables]
-assertthat::assert_that(length(variables) == ncol(river_atlas_filtered))
+river_atlas_filtered <- river_atlas_croped[, c(navigation_var, variables)]
 
 
 # Convertir le SpatVetor résultant en data.frame qui sera facile à travailler
@@ -129,7 +139,6 @@ river_df <- river_df[, names(variances)[variances > MIN_VAR]]
 # Quelques statistiques descriptives
 dim(river_df)
 summary(river_df)
-
 # On ne changera pas les valeurs manquantes pour le moment. 
 # On y touchera plus tard
 
