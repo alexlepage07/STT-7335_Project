@@ -12,7 +12,7 @@
 #  - Helaiem, Amélie
 #  - Hangsin, Andrea
 #  - Ouedraogo, Angelo
-#  - Jocelyn Pellerin
+#  - Pellerin, Jocelyn
 
 # Développeur: Alexandre Lepage (alexandre.lepage.3@ulaval.ca)
 
