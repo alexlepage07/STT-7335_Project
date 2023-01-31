@@ -1,0 +1,87 @@
+---
+title: "Projet - Première remise"
+output: 
+  html_document:
+    css: style.css
+---
+
+```{r, include = FALSE}
+
+# Paramètres globaux -----------------------------------------------------------
+
+
+knitr::opts_chunk$set(echo = FALSE)
+
+
+# Fonctions utiles -------------------------------------------------------------
+
+
+source("../R/utils.R")
+
+
+# Librairies -------------------------------------------------------------------
+
+
+libs <- c("knitr",
+          "kableExtra")
+
+# Installer les librairies au besoin et les télécharger
+inst_load_packages(libs)
+
+
+# Chemin d'accès ---------------------------------------------------------------
+
+
+data_path <- "../Data/s1_donnees_filtrees.rds"
+
+
+# Charger les données ----------------------------------------------------------
+
+
+river_df <- readRDS(data_path)
+
+
+```
+
+# 1. Présentation des données
+
+# 2. Premières analyses
+
+## 2.1 Données manquantes
+
+Les données manquantes dans un jeu de données sont chose commune et peuvent être issues de diverses causes comme des capteurs défectueux, d'oublis lors de la collecte des données ou, encore, de mesures ajoutées en cours de route d'un projet. Notre jeu de données ne fait pas exception : nous avons des données manquantes dénotées par des _-999_'s. Pour faire le portrait des données manquantes de notre jeu de données, voici le tableau 2.1.1 exposant les variables pour lesquelles nous avons des données manquantes et le nombre/pourcentage d'observations qui sont touchées :
+
+```{r}
+
+# Calculer le nombre de données manquantes par variable
+var_missing_data <- sapply(river_df, function(x) sum(x == -999)) 
+
+# Conserver que les variables avec des données manquantes
+var_missing_data <- var_missing_data[var_missing_data != 0]
+
+# Changer les noms des variables 
+names(var_missing_data) <- translate_var(names(var_missing_data))
+
+# Changer le format de la table et le mettre en data.table
+var_missing_data <- as.data.table(t(t(var_missing_data)), keep.rownames = TRUE)
+
+# Calculer le % de données manquantes
+var_missing_data[, pourc := paste0(round(V1 / nrow(river_df) * 100, 1), "%")]
+
+kbl(
+   x = as.data.table(t(t(var_missing_data)), keep.rownames = TRUE), 
+   align = c("l", "c", "c"), 
+   col.names = c("Variables", "Nombre de données manquantes", "Pourcentage de données manquantes"), 
+   caption = "Tableau 2.1.1 - Récapitulatif des variables avec des données manquantes"
+) %>% kable_classic(
+   full_width = FALSE, 
+   html_font = "Cambria"
+)
+
+```
+
+Nous remarquons qu'une variable ressort du lot avec un pourcentage de 44% de valeurs manquantes soit celle de la classification des zones humides. Or, dans la description des variables de notre jeu de données, [_RiverATLAS Attributes_](https://data.hydrosheds.org/file/technical-documentation/RiverATLAS_Catalog_v10.pdf), on y spécifie que les _-999_'s sont en fait les endroits n'ayant pas de zone humide ce qui explique pourquoi elle n'a pas de classe de zone humide attribuée. Cette classification contient 12 classes. Pour traiter ces cas de _-999_ de cette variable, nous y ajoutons un 13e classe qui équivaut à _aucune zone humide_. Nous remplaçons, donc, les valeurs _-999_ par 13.
+
+## 2.2 Réduction de la dimensionalité
+
+
