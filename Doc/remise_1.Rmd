@@ -23,7 +23,10 @@ source("../R/utils.R")
 
 
 libs <- c("knitr",
-          "kableExtra")
+          "kableExtra",
+          "naniar",
+          "extrafont",
+          "cowplot")
 
 # Installer les librairies au besoin et les télécharger
 inst_load_packages(libs)
@@ -38,23 +41,36 @@ data_path <- "../Data/s1_donnees_filtrees.rds"
 # Charger les données ----------------------------------------------------------
 
 
-river_df <- readRDS(data_path)
+river_dt <- setDT(readRDS(data_path))
 
 
 ```
 
 # 1. Présentation des données
 
+## 1.1 Description
+
+## 1.2 Stratégies d'échantillonnage
+
+Expliquer les biais possibles !
+
+
 # 2. Premières analyses
 
 ## 2.1 Données manquantes
+
+### Documentation de la non-réponse
+
+- Pourcentage par variable
 
 Les données manquantes dans un jeu de données sont chose commune et peuvent être issues de diverses causes comme des capteurs défectueux, d'oublis lors de la collecte des données ou, encore, de mesures ajoutées en cours de route d'un projet. Notre jeu de données ne fait pas exception : nous avons des données manquantes dénotées par des _-999_'s. Pour faire le portrait des données manquantes de notre jeu de données, voici le tableau 2.1.1 exposant les variables pour lesquelles nous avons des données manquantes et le nombre/pourcentage d'observations qui sont touchées :
 
 ```{r}
 
+# Calcul du pourcentage par variable -------------------------------------------
+
 # Calculer le nombre de données manquantes par variable
-var_missing_data <- sapply(river_df, function(x) sum(x == -999)) 
+var_missing_data <- sapply(river_dt, function(x) sum(x == -999)) 
 
 # Conserver que les variables avec des données manquantes
 var_missing_data <- var_missing_data[var_missing_data != 0]
@@ -66,21 +82,222 @@ names(var_missing_data) <- translate_var(names(var_missing_data))
 var_missing_data <- as.data.table(t(t(var_missing_data)), keep.rownames = TRUE)
 
 # Calculer le % de données manquantes
-var_missing_data[, pourc := paste0(round(V1 / nrow(river_df) * 100, 1), "%")]
+var_missing_data[, pourc := paste0(round(V1 / nrow(river_dt) * 100, 1), "%")]
 
 kbl(
    x = as.data.table(t(t(var_missing_data)), keep.rownames = TRUE), 
    align = c("l", "c", "c"), 
    col.names = c("Variables", "Nombre de données manquantes", "Pourcentage de données manquantes"), 
-   caption = "Tableau 2.1.1 - Récapitulatif des variables avec des données manquantes"
+   caption = "Tableau 2.1.1 - Pourcentage de données manquantes par variable"
 ) %>% kable_classic(
-   full_width = FALSE, 
+   full_width = TRUE, 
    html_font = "Cambria"
 )
 
 ```
 
 Nous remarquons qu'une variable ressort du lot avec un pourcentage de 44% de valeurs manquantes soit celle de la classification des zones humides. Or, dans la description des variables de notre jeu de données, [_RiverATLAS Attributes_](https://data.hydrosheds.org/file/technical-documentation/RiverATLAS_Catalog_v10.pdf), on y spécifie que les _-999_'s sont en fait les endroits n'ayant pas de zone humide ce qui explique pourquoi elle n'a pas de classe de zone humide attribuée. Cette classification contient 12 classes. Pour traiter ces cas de _-999_ de cette variable, nous y ajoutons un 13e classe qui équivaut à _aucune zone humide_. Nous remplaçons, donc, les valeurs _-999_ par 13.
+
+Les _-999_'s des autres variables présentées dans le tableau 2.1.1 sont bien des valeurs manquantes et nous tenterons de déterminer le mécanisme de non-réponse pour ces variables et les patrons qu'elle forment.
+
+- Pourcentage par patron de non-réponse
+
+Nous voyons dans le tableau ici-bas les deux patrons de non-réponse de notre jeu de données ainsi que la proportion des observations associée à chacun de ces patrons.
+
+```{r}
+
+# Patrons de non-réponse -------------------------------------------------------
+
+# Sélection des variables avec des valeurs manquantes
+n <- names(river_dt)[sapply(river_dt, function(x) any(x == -999))]
+
+# Retrait de la variable de la classification des zones humides
+n <- n[n != "wet_cl_cmj"]
+
+# Création de la matrice R
+R_dt <- as.data.table(river_dt[, n, with = FALSE] == -999)
+
+# Traduire les variables en leur description
+names(R_dt) <- translate_var(names(R_dt))
+n <- translate_var(n)
+
+# Changer les -999 pour le nom de la variable manquante
+R_dt[, (n) := lapply(n, function(var_name) {fifelse(R_dt[[var_name]], paste0("\U2022 ", var_name, " <br> "), "")})]
+
+# Créer une colonne contenant l'ensemble des variables (patron) pour une observation
+# donnée (une ligne) contenant des valeurs manquantes
+R_dt[, pattern := apply(.SD, 1, function(x) paste(x, collapse = "")), .SDcols = n]
+
+# Calculer le % de cas ayant chaque patron de valeurs manquantes
+R_dt <- R_dt[pattern != "", paste0(round(.N / nrow(R_dt) * 100, 2), "%"), by = pattern]
+
+R_dt <- cbind(data.table(num = 1:nrow(R_dt)), 
+              R_dt)
+
+R_dt %>%  knitr::kable(
+   escape = FALSE,
+   format = "html", 
+   align = c("c", "l", "c"),
+   col.names = c("Numéro", 
+                 "Patrons de non-réponse", 
+                 "Pourcentage de données manquantes"),
+   caption = "Tableau 2.1.2 - Pourcentage de données manquantes par patron de non-réponse"
+) %>% kable_classic(
+   full_width = TRUE, 
+   html_font = "Cambria"
+) %>% row_spec(
+   row = 1, 
+   extra_css = "border-bottom: 1px solid")
+
+```
+
+Le patron #1 est composé des variables de la composition du sol et pour les cav's seulement, il représente 0.82% de nos données. Le second patron est composé des mêmes variables que le premier patron, mais avec leur équivalent pour les uav's.
+
+- Distribution des autres variables par patron
+
+Nous faisons une analyse préliminaire pour évaluer si les données sont manquantes de façon aléatoire. Pour ce faire, nous commençons à comparer les graphique de la distribution de variables explicatives pour les observations qui ne font pas parties d'un patron donné ($patron_x = 0$) au graphique de la même variable mais qui font partie de ce patron ($patron_x = 1$). Nous montrons quelques exemples de variables dont la distribution changent en fonction de si les observations font parties du patron ou non ce qui suggère que nous ne sommes pas en présence de valeurs manquantes complètement aléatoire. 
+
+- Patron #1
+
+```{r}
+river_dt[, patron1 := 0]
+river_dt[snd_pc_cav == -999 & snd_pc_uav != -999, patron1 := 1]
+```
+
+::: columns
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "dis_m3_pyr", color = "patron1")
+```
+
+::::
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "lka_pc_use", color = "patron1")
+```
+
+::::
+
+:::
+
+::: columns
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "for_pc_use", color = "patron1")
+```
+
+::::
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "ero_kh_cav", color = "patron1")
+```
+
+::::
+
+:::
+
+Nous exposons dans le tableau suivant l'ensemble des tests t possibles pour comparer la moyenne des autres variables pour les observations faisant parties du patron et celle pour les observations ne faisant pas parties du patron
+
+```{r}
+
+# Calculer les test-t's
+t_test_res <- t_test_by_patron(river_dt, "patron1")
+
+# Afficher sous forme de tableau les seuils observés des tests de comparaison 
+# de moyenne
+t_test_res[order(p_value, decreasing = TRUE)] %>%  knitr::kable(
+   align = c("l", "c"),
+   col.names = c("Variable", 
+                 "Seuil observé"),
+   caption = "Tableau 2.1.3 - Seuil observé pour les tests t entre les valeurs dans le patron #1 et celles pas dans ce patron"
+) %>% kable_classic(
+   full_width = TRUE, 
+   html_font = "Cambria"
+) 
+
+```
+
+- Patron #2
+
+Nous savons que le patron #2 touche seulement 0.06% des observations ce qui implique que nous avons peu de valeurs pour constituer une distribution. Nous pouvons observer à partir des graphiques suivants qu'il y a peu de variabilité au sein des observations faisant parties du patron #2. Il semble très probable qu'on ne possède pas assez d'observations pour construire une distribution qui nous permet de déterminer le mécanisme de non-réponse, bien que basé sur ce qu'on observe il ne semble pas que les données sont manquantes complètement aléatoirement.
+
+```{r}
+river_dt[, patron2 := 0]
+river_dt[snd_pc_cav == -999 & snd_pc_uav == -999, patron2 := 1]
+```
+
+::: columns
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "dis_m3_pyr", color = "patron2")
+```
+
+::::
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "lka_pc_use", color = "patron2")
+```
+
+::::
+
+:::
+
+::: columns
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "for_pc_use", color = "patron2")
+```
+
+::::
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "ero_kh_cav", color = "patron2")
+```
+
+::::
+
+:::
+
+```{r}
+
+# Calculer les test-t's
+t_test_res <- t_test_by_patron(river_dt, "patron2")
+
+# Afficher sous forme de tableau les seuils observés des tests de comparaison 
+# de moyenne
+t_test_res[order(p_value, decreasing = TRUE)] %>%  knitr::kable(
+   align = c("l", "c"),
+   col.names = c("Variable", 
+                 "Seuil observé"),
+   caption = "Tableau 2.1.3 - Seuil observé pour les tests t entre les valeurs dans le patron #2 et celles pas dans ce patron"
+) %>% kable_classic(
+   full_width = TRUE, 
+   html_font = "Cambria"
+) 
+
+```
+
+### Identifier le mécanisme de non-réponse
+
+Pour valider nos analyses préliminaires, nous utilisons le test de _Little_, 
+
+### Traitement de la non-réponse
 
 ## 2.2 Réduction de la dimensionalité
 
