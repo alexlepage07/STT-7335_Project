@@ -155,7 +155,7 @@ inst_load_packages <- function(libs) {
       libs, 
       function(x) {
          if (!(x %in% utils::installed.packages())) 
-            utils::install.librairies(x)
+            install.packages(x)
       }
    )
    

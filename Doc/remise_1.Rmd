@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = FALSE)
 # Fonctions utiles -------------------------------------------------------------
 
 
-source("../R/utils.R")
+source("R/utils.R")
 
 
 # Librairies -------------------------------------------------------------------
@@ -32,7 +32,7 @@ inst_load_packages(libs)
 # Chemin d'accès ---------------------------------------------------------------
 
 
-data_path <- "../Data/s1_donnees_filtrees.rds"
+data_path <- "Data/s1_donnees_filtrees.rds"
 
 
 # Charger les données ----------------------------------------------------------
