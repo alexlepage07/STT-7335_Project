@@ -23,7 +23,8 @@ source("R/utils.R")
 
 
 libs <- c("knitr",
-          "kableExtra")
+          "kableExtra",
+          "naniar")
 
 # Installer les librairies au besoin et les télécharger
 inst_load_packages(libs)
@@ -38,26 +39,42 @@ data_path <- "Data/s1_donnees_filtrees.rds"
 # Charger les données ----------------------------------------------------------
 
 
-river_df <- readRDS(data_path)
+river_dt <- setDT(readRDS(data_path))
 
 
 ```
 
 # 1. Présentation des données
 
+## 1.1 Description
+
+## 1.2 Stratégies d'échantillonnage
+
+Expliquer les biais possibles !
+
+
 # 2. Premières analyses
 
 ## 2.1 Données manquantes
+
+### Documentation de la non-réponse
+
+#### Pourcentage de données manquantes par variable
 
 Les données manquantes dans un jeu de données sont chose commune et peuvent être issues de diverses causes comme des capteurs défectueux, d'oublis lors de la collecte des données ou, encore, de mesures ajoutées en cours de route d'un projet. Notre jeu de données ne fait pas exception : nous avons des données manquantes dénotées par des _-999_'s. Pour faire le portrait des données manquantes de notre jeu de données, voici le tableau 2.1.1 exposant les variables pour lesquelles nous avons des données manquantes et le nombre/pourcentage d'observations qui sont touchées :
 
 ```{r}
 
-# Calculer le nombre de données manquantes par variable
-var_missing_data <- sapply(river_df, function(x) sum(x == -999)) 
+# Calcul du pourcentage par variable -------------------------------------------
 
-# Conserver que les variables avec des données manquantes
-var_missing_data <- var_missing_data[var_missing_data != 0]
+# Calculer le nombre de données manquantes par variable et conserver que celles avec des données manquantes
+var_missing_data <- unlist(lapply(
+      X = river_dt, 
+      FUN = function(x) {
+         res <- sum(x == -999)
+         if(res != 0) {res} else {NULL}
+      }
+   ))
 
 # Changer les noms des variables 
 names(var_missing_data) <- translate_var(names(var_missing_data))
@@ -66,21 +83,235 @@ names(var_missing_data) <- translate_var(names(var_missing_data))
 var_missing_data <- as.data.table(t(t(var_missing_data)), keep.rownames = TRUE)
 
 # Calculer le % de données manquantes
-var_missing_data[, pourc := paste0(round(V1 / nrow(river_df) * 100, 1), "%")]
+var_missing_data[, pourc := paste0(round(V1 / nrow(river_dt) * 100, 1), "%")]
 
 kbl(
    x = as.data.table(t(t(var_missing_data)), keep.rownames = TRUE), 
    align = c("l", "c", "c"), 
    col.names = c("Variables", "Nombre de données manquantes", "Pourcentage de données manquantes"), 
-   caption = "Tableau 2.1.1 - Récapitulatif des variables avec des données manquantes"
+   caption = "Tableau 2.1.1 - Pourcentage de données manquantes par variable"
 ) %>% kable_classic(
-   full_width = FALSE, 
+   full_width = TRUE, 
    html_font = "Cambria"
 )
 
 ```
 
 Nous remarquons qu'une variable ressort du lot avec un pourcentage de 44% de valeurs manquantes soit celle de la classification des zones humides. Or, dans la description des variables de notre jeu de données, [_RiverATLAS Attributes_](https://data.hydrosheds.org/file/technical-documentation/RiverATLAS_Catalog_v10.pdf), on y spécifie que les _-999_'s sont en fait les endroits n'ayant pas de zone humide ce qui explique pourquoi elle n'a pas de classe de zone humide attribuée. Cette classification contient 12 classes. Pour traiter ces cas de _-999_ de cette variable, nous y ajoutons un 13e classe qui équivaut à _aucune zone humide_. Nous remplaçons, donc, les valeurs _-999_ par 13.
+
+```{r}
+
+
+# Modifier les -999 par une classe pour la variable wet_cl_cmj
+
+mod_missing_wet_cl_cmj(river_dt)
+
+
+```
+
+
+Les _-999_'s des autres variables présentées dans le tableau 2.1.1 sont bien des valeurs manquantes et nous tenterons de déterminer le mécanisme de non-réponse pour ces variables et les patrons qu'elle forment.
+
+Nous pouvons observer que nous avons plusieurs variables "en double". En effet, nous avons, par exemple, la proportion de sable (en %) (cav) et proportion de sable (en %) (uav). Le terme _cav_ réfère à et celui du _uav_. Or, nous pouvons faire l'hypothèse que ces deux variables sont très corrélées. Nous validons, toutefois, que c'est bien le cas :
+
+
+```{r, echo = FALSE}
+
+# Nous remplaçons les -999 par des NA
+col_w_na <- get_col_w_na(river_dt, na_pattern = -999)
+river_dt[, (col_w_na) := 
+            lapply(
+               X = .SD, 
+               FUN = function(x) fifelse(x == -999, get_na_by_type(x), x)),
+         .SDcols = col_w_na]
+
+# Calculer les corrélation entre les mêmes variables, mais cav et uav
+var_prefix <- 
+   unique(
+      sapply(
+         grep("uav", col_w_na, value = TRUE), 
+         function(x) substr(x, 1, nchar(x) - 4)
+      )
+   )
+
+res <- sapply(var_prefix, function(nm) round(cor(river_dt[[paste0(nm, "_cav")]], 
+                                    river_dt[[paste0(nm, "_uav")]], 
+                                    use = "complete.obs"), 2))
+
+kbl(
+   x = t(as.data.table(res)), 
+   align = rep("c", length(res)),  
+   col.names = translate_var(names(res)), 
+   caption = "Tableau 2.1.2 - Coefficient de corrélation entre la même variable cav et uav"
+) %>% kable_classic(
+   full_width = TRUE, 
+   html_font = "Cambria"
+)
+
+# Nous retirons les variables de notre jeu de données
+
+
+river_dt <- river_dt[, !grep("uav", col_w_na, value = TRUE), with = FALSE]
+
+```
+Étant donné cette forte corrélation et le fait que la mesure soit très similaire, nous retirons ces variables avec le suffixe _uav_.
+
+#### Pourcentage par patron de non-réponse
+
+Nous voyons dans le tableau ici-bas le seul patron de non-réponse de notre jeu de données ainsi que la proportion des observations qui y est associé.
+
+```{r}
+
+# Patrons de non-réponse -------------------------------------------------------
+
+# Sélection des variables avec des valeurs manquantes
+n <- get_col_w_na(river_dt)
+
+# Création de la matrice R
+R_dt <- as.data.table(is.na(river_dt[, n, with = FALSE]))
+
+# Traduire les variables en leur description
+names(R_dt) <- translate_var(names(R_dt))
+n <- translate_var(n)
+
+# Changer les -999 pour le nom de la variable manquante
+R_dt[, (n) := lapply(n, function(var_name) {fifelse(R_dt[[var_name]], paste0("\U2022 ", var_name, " <br> "), "")})]
+
+# Créer une colonne contenant l'ensemble des variables (patron) pour une observation
+# donnée (une ligne) contenant des valeurs manquantes
+R_dt[, pattern := apply(.SD, 1, function(x) paste(x, collapse = "")), .SDcols = n]
+
+# Calculer le % de cas ayant chaque patron de valeurs manquantes
+R_dt <- R_dt[pattern != "", paste0(round(.N / nrow(R_dt) * 100, 2), "%"), by = pattern]
+
+R_dt <- cbind(data.table(num = 1:nrow(R_dt)), 
+              R_dt)
+
+R_dt %>%  knitr::kable(
+   escape = FALSE,
+   format = "html", 
+   align = c("c", "l", "c"),
+   col.names = c("Numéro", 
+                 "Patrons de non-réponse", 
+                 "Pourcentage de données manquantes"),
+   caption = "Tableau 2.1.3 - Pourcentage de données manquantes par patron de non-réponse"
+) %>% kable_classic(
+   full_width = TRUE, 
+   html_font = "Cambria"
+) %>% row_spec(
+   row = 1, 
+   extra_css = "border-bottom: 1px solid")
+
+```
+
+Nous avons qu'une seul patron de non-réponse. Ce dernier est composé des variables de la composition du sol et il représente 0.88% de nos données. 
+
+### Identifier le mécanisme de non-réponse
+
+#### Distribution des autres variables
+
+Nous faisons une analyse préliminaire pour évaluer si les données sont manquantes de façon complètement aléatoire. Pour ce faire, nous commençons à comparer les graphique de la distribution de variables explicatives pour les observations qui ne font pas parties du patron ($patron = 0$) au graphique de la même variable mais avec les observation qui font partie de ce patron ($patron = 1$). Nous montrons quelques exemples de variables dont la distribution changent en fonction de si les observations font parties du patron ou non ce qui suggère que nous ne sommes pas en présence de valeurs manquantes complètement aléatoire. 
+
+```{r}
+river_dt[, patron := 0]
+river_dt[is.na(snd_pc_cav), patron := 1]
+```
+
+::: columns 
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "dis_m3_pyr", color = "patron")
+```
+
+On voit que la distribution de du débit d'eau moyen pour les observations manquantes ont beaucoup plus de poids dans les extrêmes et possède une moyenne largement plus grande.
+
+::::
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "lka_pc_use", color = "patron")
+```
+On voit que pour les observations manquantes semblent se retrouver dans des territoires avec un plus haut pourcentage de terre correspondant à des lacs supposant.
+
+::::
+
+:::
+
+::: columns
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "for_pc_use", color = "patron")
+```
+Les moyennes du pourcentage occupé par les forêts sont relativement similaires. Un _test-t_ nous permettrait de valider si elles sont significativement différente. Par contre, la distribution est différente avec les données sans données manquantes qui se retrouvent plus souvent dans les proportions élevées.
+
+
+::::
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "ero_kh_cav", color = "patron")
+```
+
+L'érosion des sols semble être moins élevée pour les données manquantes.
+
+::::
+
+:::
+
+Cette analyse préliminaire des distributions suggère que nous ne sommes pas en présence de données manquantes de façon complètement aléatoire puisque visuellement les distributions de variables pour les données observées et les données manquantes sont différentes.
+
+Pour poursuivre notre analyse, nous exposons dans le tableau suivant l'ensemble des _test-t_'s possibles pour comparer la moyenne des autres variables pour les observations faisant parties du patron et celle pour les observations ne faisant pas parties du patron
+
+```{r}
+
+# Calculer les test-t's
+t_test_res <- t_test_by_patron(river_dt, "patron")
+
+# Afficher sous forme de tableau les seuils observés des tests de comparaison 
+# de moyenne
+t_test_res[order(p_value, decreasing = TRUE)] %>%  knitr::kable(
+   align = c("l", "c"),
+   col.names = c("Variable", 
+                 "Seuil observé"),
+   caption = "Tableau 2.1.4 - Seuil observé pour les tests t entre les valeurs dans le patron et celles pas dans ce patron"
+) %>% kable_classic(
+   full_width = TRUE, 
+   html_font = "Cambria"
+) 
+
+```
+
+Nous remarquons que `r sum(t_test_res$p_value < 0.05)` tests ont un seuil observé en dessous de 5%. Cela signifie que pour ces tests la moyenne de la variable évaluée est significativement différente pour les valeurs observées de la moyenne de celles manquantes. Or, faire autant de _test-t_'s a ses limites. En effet, puisque nous faisons au total `r nrow(t_test_res)`, nous avons le problème de comparaisons multiples qui implique que même si toutes les moyennes étaient réellement égales une partie des tests seraient rejettées. Or, dans notre cas, une très grande partie le sont ce qui appuie notre hypothèse comme quoi les données ne sont pas manquantes complètement aléatoirement.
+
+#### Test de Little
+
+Pour valider nos analyses préliminaires, nous utilisons le test de _Little_, qui calcule une statistique telle que :
+
+
+$$d^2 = \sum_{j = 1}^J (\hat{\mu}_j - \hat{\mu}_j^{ML})\hat\Sigma_j^{-1}(\hat{\mu}_j - \hat{\mu}_j^{ML})$$
+Si les données sont manquantes de façon complètement aléatoire, nous aurons que $d^2 \sim \chi_{\sum_{j=1}^J k_j-k}$. 
+
+```{r, warning = FALSE}
+
+river_dt[, c("patron", "var_color")] <- list(NULL)
+nm <- names(river_dt) 
+res <- mcar_test(river_dt[, nm[toupper(nm) != nm], with = FALSE])
+
+```
+
+En utilisant la formule `naniar::mcar_test`, nous obtenons que le seuil observé de `r res$p.value` qui confirme notre hypothèse. On rejette, donc, l'hypothèse $H_0 :$ Données manquantes avec un mécanisme _MCAR_.
+
+#### MAR ou MNAR?
+
+Les valeurs manquantes des variables de constituions du sol dépendent, à notre avis, des autres variables observées. À compléter !
+
+### Traitement de la non-réponse
 
 ## 2.2 Réduction de la dimensionalité
 

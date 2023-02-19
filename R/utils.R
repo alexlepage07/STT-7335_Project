@@ -40,10 +40,24 @@ l <- lapply(
 
 
 graph_density <- 
-   function(data, var, nb_bins = 10, quantile_min = 0.05, quantile_max = 0.95) {
+   function(data, var, nb_bins = 10, quantile_min = 0.05, quantile_max = 0.95, color = NULL) {
       
       # Donner la classe data.table à l'objet data
       setDT(data)
+      
+      # Créer un variable var_color
+      set(
+         x = data, 
+         j = "var_color", 
+         value = if (is.null(color)) 1 else as.factor(data[[color]])
+      )
+      
+      # Calculer les moyennes des groupes
+      if (!is.null(color)) {
+         mean_by_color <- 
+            data[, round(mean(get(var, inherits = FALSE), na.rm = TRUE), 2), 
+                 by = var_color]
+      }
       
       # Créer les variables basées sur les arguments
       q_min <- quantile(data[[var]], quantile_min)
@@ -73,10 +87,11 @@ graph_density <-
       )
       
       # Calculer le % dans chacun des intervalles
-      res <- data[, .(pourc = .N / nrow(data)), by = bins_var]
+      data[, tot_value := .N, by = var_color]
+      res <- data[, .(pourc = .N / unique(tot_value)), by = .(bins_var, var_color)]
       
       # Valider nos résultats
-      stopifnot(sum(res$pourc) == 1)
+      stopifnot(round(sum(res[var_color == res$var_color[1]]$pourc) * 100) == 100)
       
       # Créer le graphique
       p <- ggplot(
@@ -84,19 +99,55 @@ graph_density <-
       ) + 
          geom_bar(
             mapping = aes(y = pourc,
-                          x = bins_var),
-            stat = "identity"
+                          x = bins_var,
+                          fill = var_color),
+            stat = "identity",
+            color = "#000000",
+            position = "dodge"
          ) +
          theme(
-            axis.text.x = element_text(angle = 35,
-                                       size = 5)
+            axis.text.x = element_text(
+               angle = 35,
+               size = 5
+            ),
+            text = element_text(
+               family = "serif"
+            )
          ) + 
-         labs(title = paste0("Distribution - ", translate_var(var)),
-              x = translate_var(var), 
-              y = translate_var("dis_m3_pyr")
+         labs(
+            title = paste0("Distribution - ", translate_var(var)),
+            x = translate_var(var), 
+            y = "Proportion (en %)",
+            fill = color
          )
       
-      return(p)
+      if (!is.null(color)) {
+         label <- 
+            paste(
+               paste(
+                  "Moy. ", 
+                  color, 
+                  " = ", 
+                  mean_by_color$var_color, 
+                  " : ", 
+                  mean_by_color$V1
+               ), 
+               collapse = "\n"
+            )
+         
+         p <- p + 
+            annotate(
+               geom = "text",
+               x = ggplot_build(p)$layout$panel_params[[1]]$x.range[2] - 3, 
+               y =  ggplot_build(p)$layout$panel_params[[1]]$y.range[2], 
+               label = label,
+               size = 4,
+               family = "serif"
+            )
+         
+      }
+      
+      return(p) 
    }
 
 
@@ -116,13 +167,22 @@ translate_var <- function(vars) {
       
       snd_pc_cav = "Proportion de sable (en %) (cav)",
       snd_pc_uav = "Proportion de sable (en %) (uav)",
+      snd_pc     = "Proportion de sable (en %)",
       cly_pc_cav = "Proportion d'argile (en %) (cav)",
       cly_pc_uav = "Proportion d'argile (en %) (uav)",
+      cly_pc     = "Proportion d'argile (en %)",
       slt_pc_cav = "Proportion de limon (en %) (cav)",
       slt_pc_uav = "Proportion de limon (en %) (uav)",
+      slt_pc     = "Proportion de limon (en %)",
       soc_th_cav = "Quantité moyenne de carbone dans les 5 premiers centimètres de sol (en tonnes/hectar) (cav)",
       soc_th_uav = "Quantité moyenne de carbone dans les 5 premiers centimètres de sol (en tonnes/hectar) (uav)",
+      soc_th     = "Quantité moyenne de carbone dans les 5 premiers centimètres de sol (en tonnes/hectar)",
       
+      for_pc_cse = "Proportion occupée par les forêts (cse)",
+      for_pc_use = "Proportion occupée par les forêts (use)",
+      
+      ero_kh_cav = "Érosion causé par les rivières en kg/hectare/année de roche (cav)",
+      ero_kh_uav = "Érosion causé par les rivières en kg/hectare/année de roche (uav",
       
       wet_cl_cmj = "Classification des zones humides"
    )
@@ -163,5 +223,90 @@ inst_load_packages <- function(libs) {
    s <- sapply(libs, function(x) do.call(library, list(x)))
 }
 
+
+# Fonction pour faire des tests de comparaison de moyenne par patron
+
+t_test_by_patron <- function(dt, patron_nm) {
+   
+   # Créer une colonne contenant l'indicateur de si l'observation fait partie
+   # du patron ou non
+   set(x = dt, j = "patron_nm", value = dt[[patron_nm]])
+   
+   # Sélection des variables numériques et qui ne sont pas en majuscule
+   n_num <- grep("patron", names(dt)[sapply(dt, is.numeric)], value = TRUE, invert = TRUE)
+   n_num <- n_num[toupper(n_num) != n_num]
+   n_num <- n_num[!(n_num %in% get_col_w_na(dt))]
+   
+   
+   # Faire tous les test-t's
+   t_test_res <- data.table(
+      names = translate_var(n_num),
+      p_value = sapply(
+         n_num,
+         function(x) {
+            t.test(
+               dt[patron_nm == 0][[x]],
+               dt[patron_nm == 1][[x]]
+            )[["p.value"]]
+         }
+      )
+   )
+   
+   # Retirer la colonne créée
+   set(x = dt, j = "patron_nm", value = NULL)
+   
+   # Retour de la fonction
+   return(t_test_res)
+}
+
+
+# Fonction qui crée des NA's basé sur le type de données initial
+
+
+get_na_by_type <- function(x) {
+   res <- switch(
+      typeof(x),
+      integer = NA_integer_,
+      double = NA_real_
+   )
+   
+   if (is.factor(x)) {
+      res <- factor(
+         x = res, 
+         levels = levels(x), 
+         exclude = NA
+      )
+   }
+   
+   return(res)
+}
+
+
+
+# Fonction qui permet d'obtenir les noms de colonnes qui ont des NA's
+
+
+get_col_w_na <- function(dt, na_pattern = NA) {
+   
+   names(unlist(lapply(
+      X = dt, 
+      FUN = function(x) {
+         res <- if (is.na(na_pattern)) {sum(is.na(x))} else {sum(x == na_pattern)}
+         if(res != 0) {res} else {NULL}
+      }
+   )))
+   
+}
+
+# Fonction qui modifie la classe -999 de la variable 
+
+
+mod_missing_wet_cl_cmj <- function(dt) {
+   
+   dt[, wet_cl_cmj := factor(wet_cl_cmj, unique(c(13, levels(dt$wet_cl_cmj))))]
+   
+   dt[wet_cl_cmj == -999, wet_cl_cmj := "13"]
+   
+}
 
 
