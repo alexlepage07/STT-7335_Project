@@ -23,6 +23,7 @@
 
 lib <- c("data.table",
          "ggplot2",
+         "terra",
          "tidyverse",
          "utils")
 
@@ -303,9 +304,9 @@ get_col_w_na <- function(dt, na_pattern = NA) {
 
 mod_missing_wet_cl_cmj <- function(dt) {
    
-   dt[, wet_cl_cmj := factor(wet_cl_cmj, unique(c(13, levels(dt$wet_cl_cmj))))]
+   dt[, wet_cl_cmj := factor(wet_cl_cmj, unique(c(0, levels(dt$wet_cl_cmj))))]
    
-   dt[wet_cl_cmj == -999, wet_cl_cmj := "13"]
+   dt[wet_cl_cmj == -999, wet_cl_cmj := "0"]
    
 }
 
