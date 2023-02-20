@@ -22,19 +22,22 @@
 
 
 library(data.table)
-library(dplyr)
+library(leaflet)
 library(Hmisc)
-library(lme4)
 library(naniar)
+library(sf)
+library(terra)
 
-require(MASS)
+source("R/utils.R")
 
 
 # Chemins d'accès --------------------------------------------------------------
 
 
 input_path <- "Data/s1_donnees_filtrees.rds"
-output_path <- "Data/s2_donnees_sol_pc_imputees.rds"
+output_path <- "Data/s2_donnees_imputees.rds"
+
+shape_file_path <- "Data/RiverATLAS_Data_v10_shp/RiverATLAS_v10_shp"
 
 
 # Charger le jeu de données ----------------------------------------------------
@@ -45,226 +48,133 @@ variables <- names(river_dt)
 navigation_var <- variables[1:3]
 
 
-# Sélectionner les variables relatives à la composition du sol -----------------
-# Ces variables sont la source principales de valeurs manquantes
+# Sélectionner les variables contenant des valeurs manquantes ------------------
 
 
-soil_composition_vars <- variables[
-   variables %like% "_pc_" & variables %like% "snd|cly|slt|soc"]
-
-soil_comp_dt <- river_dt[, c(navigation_var, soil_composition_vars), with = FALSE]
-
-# Remplacer les -999 par des NA
-soil_comp_dt[soil_comp_dt == -999] <- NA
-
-
-# Analyse de pattern -----------------------------------------------------------
+# Identifier les variables avec des valeurs manquantes
+var_missing_data <- 
+   river_dt |> lapply(function(x) {
+   res <- sum(x == -999)
+   if(res != 0) {res} else {NULL}
+}) |> unlist()
+var_missing_data
 
 
-soil_comp_dt[is.na(snd_pc_cav)] %>% summary()
-soil_comp_dt[is.na(snd_pc_uav)] %>% summary()
-
-na.pattern(soil_comp_dt)
-# Clairement, les valeurs manquantes se produisent toujours selon le même pattern
-
-par(mfrow = c(2,2))
-naplot(naclus(soil_comp_dt[, ..soil_composition_vars]))
-par(mfrow = c(1,1))
+# Ajouter une classe pour la variable catégorielle wet_cl_cmj ------------------
 
 
-# Analyse des corrélations -----------------------------------------------------
+mod_missing_wet_cl_cmj(river_dt)
 
 
-cor(soil_comp_dt[!is.na(snd_pc_cav), .SD[,-c(1:3)]])
-# Il y a une très forte dépendance linéaire entre les variables de composition du sol.
-
-cor(soil_comp_dt[, .(snd_pc_cav, snd_pc_uav)], use="complete.obs")
-cor(soil_comp_dt[, .(cly_pc_cav, cly_pc_uav)], use="complete.obs")
-cor(soil_comp_dt[, .(slt_pc_cav, slt_pc_uav)], use="complete.obs")
-# Cette dépendance est d'autant plus forte lorsque l'on compare les proportions,
-# pour une même type de sol, entre les segments de rivières (cav) et le réseau en 
-# amont qui le constitue (uav).
-# À un tel point, qu'il serait totalement inutile de conserver les colonnes "_cav"
-# et que l'on pourrait travailler uniquement avec les "_uav"
-
-soil_composition_vars <- 
-   soil_composition_vars[soil_composition_vars %like% "_uav"]
-soil_comp_dt <- 
-   soil_comp_dt[, c(navigation_var, soil_composition_vars), with = FALSE]
+# Regarder les patrons de non-réponse ------------------------------------------
 
 
-# Analyse des distributions conditionnelles ------------------------------------
+# Identifier les variables avec des valeurs manquantes
+col_w_na <- get_col_w_na(river_dt, na_pattern = -999)
 
 
-# Analyse de statistiques sur la composition du sol, par affluent principal 
-# (MAIN_RIV)
-soil_comp_dt[
-   , 
-   lapply(.SD, mean, na.rm = TRUE), 
-   by = MAIN_RIV, 
-   .SDcols = soil_composition_vars
-] %>% summary()  # Moyennes conditionnelles
-
-soil_comp_dt[
-   ,
-   lapply(.SD, var, na.rm = TRUE),
-   by = MAIN_RIV,
-   .SDcols = soil_composition_vars
-] %>% summary()  # Variances conditionnelles
+# Remplacer les codes -999 par des NA
+river_dt[river_dt == -999] <- NA
 
 
-# Clairement les distributions de ces variables sont impactées par l'affluent 
-# de la rivière
-soil_comp_dt[, .N, by = MAIN_RIV]$N %>% describe()
-# Cependant, il y a beaucoup d'affluents principaux qui n'ont qu'un seul bassin
+missings_dt <- river_dt[, col_w_na, with = FALSE]
+Hmisc::na.pattern(missings_dt)
+col_w_na
+# Il y a deux patrons possibles:
+#  - Toutes les variables cav sont manquantes 
+#  - Toutes les variables sont manquantes
+# 
+# Note: Il y a plus de variables manquantes avec les variables cav que uav
 
 
-soil_comp_dt[, snd_pc_uav] %>% hist()
-soil_comp_dt[, cly_pc_uav] %>% hist()
-soil_comp_dt[, slt_pc_uav] %>% hist()
+Similarity_matrix <- varclus(as.matrix(missings_dt))
+Similarity_matrix
+plot(Similarity_matrix)
+# Il semble y avoir une corrélation très forte entre les variables uav et cav.
 
 
-# Imputation des données manquantes --------------------------------------------
+# Calculer les corrélation entre les mêmes variables, mais cav et uav
+uav_vars <- grep("uav", col_w_na, value = TRUE) 
+
+uav_vars |>
+sapply(substr, 1, nchar(uav_vars) - 4) |>
+unique() |>
+sapply(function(nm)
+   cor(river_dt[[paste0(nm, "_cav")]],
+       river_dt[[paste0(nm, "_uav")]],
+       use = "complete.obs")) |> round(2)
+# Les variables uav et cav sont tellement corrélées qu'on peut en retirer une des
+# deux
 
 
-impute_soil_composition <- function(soil_comp_dt, n_epoch=30L, seed=1234) {
-   
-   
-   # Préparer les données ------------------------------------------------------
-   
-   
-   id_to_imput <- soil_comp_dt[is.na(slt_pc_uav), HYRIV_ID]
-   imputation_dt <- copy(soil_comp_dt)
-   
-   soil_vars <- names(soil_comp_dt)[names(soil_comp_dt) %like% "_pc_uav"]
-   imputation_dt <- imputation_dt %>% mutate_at(soil_vars, as.double)
-   
-   imputation_dt$key <- seq_len(nrow(imputation_dt))
-   
-   
-   # Entraîner un modèle mixte pour chacune des variables ----------------------
-   
-   
-   snd_lmm <- lme4::lmer(
-      snd_pc_uav ~ cly_pc_uav + slt_pc_uav + (1 | MAIN_RIV),
-      data = imputation_dt[!HYRIV_ID %in% id_to_imput]
-   )
-   
-   cly_lmm <- lme4::lmer(
-      cly_pc_uav ~ snd_pc_uav + slt_pc_uav + (1 | MAIN_RIV),
-      data = imputation_dt[!HYRIV_ID %in% id_to_imput]
-   )
-   
-   slt_lmm <- lme4::lmer(
-      slt_pc_uav ~ snd_pc_uav + cly_pc_uav + (1 | MAIN_RIV),
-      data = imputation_dt[!HYRIV_ID %in% id_to_imput]
-   )
-   
-
-   # Définir des valeurs initiales ---------------------------------------------
-   
-   
-   conditional_means <- imputation_dt[
-      , 
-      lapply(.SD, mean, na.rm = TRUE),
-      .SDcols = soil_composition_vars, 
-      by = "MAIN_RIV"
-   ]
-   
-   for(id in id_to_imput) {
-      
-      main_riv <- imputation_dt[HYRIV_ID == id, MAIN_RIV]
-      
-      imputation_dt[
-         HYRIV_ID == id, 
-         snd_pc_uav := conditional_means[MAIN_RIV == main_riv, snd_pc_uav]
-      ]
-      imputation_dt[
-         HYRIV_ID == id, 
-         cly_pc_uav := conditional_means[MAIN_RIV == main_riv, cly_pc_uav]
-      ]
-      imputation_dt[
-         HYRIV_ID == id, 
-         slt_pc_uav := conditional_means[MAIN_RIV == main_riv, slt_pc_uav]
-      ]
-   }
-   
-   
-   # Simuler des réalisations des trois variables de composition du sol --------
-   
-   
-   impute_variable <- function(lmm_model, dt_to_predict, Z, K) {
-      
-      .sum <- summary(lmm_model)
-      
-      mu <- as.numeric(predict(lmm_model, dt_to_predict))
-      Sigma <- compute_var_Y(
-         D = c(.sum$varcor$MAIN_RIV) ^ 2 * diag(K),
-         V = .sum$sigma ^2 * diag(nrow(dt_to_predict)),
-         Z = Z
-      ) 
-      return(round(MASS::mvrnorm(1, mu, Sigma)))
-   }
-   
-   
-   compute_var_Y <- function(D, V, Z){
-      return(Z %*% D %*% t(Z) + V)
-   }
-   
-   
-   set.seed(seed)
-   dt_to_predict <- imputation_dt[HYRIV_ID %in% id_to_imput]
-   
-   
-   # Extraire les caractéristiques sur l'effet aléatoire
-   main_riv_to_imput <- dt_to_predict$MAIN_RIV
-   
-   Z <- sapply(unique(main_riv_to_imput), function(main_riv) {
-      main_riv_to_imput == main_riv
-   })
-   
-   K <- length(unique(main_riv_to_imput))
-   
-   # Imputer itérativement
-   for(i in 1:n_epoch) {
-      
-      dt_to_predict[,
-         snd_pc_uav := impute_variable(snd_lmm, dt_to_predict, Z, K)
-      ]
-      
-      dt_to_predict[,
-         cly_pc_uav := impute_variable(cly_lmm, dt_to_predict, Z, K)
-      ]
-      
-      dt_to_predict[,
-         slt_pc_uav := impute_variable(slt_lmm, dt_to_predict, Z, K)
-      ]
-   }
-   
-   dt_to_predict[, slt_pc_uav := min(slt_pc_uav, 100 - snd_pc_uav - cly_pc_uav)]
-   
-   output <- rbind(
-      imputation_dt[!(HYRIV_ID %in% id_to_imput)],
-      dt_to_predict
-   )
-   
-   setorder(output, key)
-   
-   output <- output %>% dplyr::select(-"key")
-   
-   return(output)
-}
+river_dt <- river_dt[, !grep("cav", col_w_na, value = TRUE), with = FALSE]
 
 
-imputed_soils <- impute_soil_composition(soil_comp_dt)
+river_dt[, get_col_w_na(river_dt, na_pattern = NA), with = FALSE] |>
+   Hmisc::na.pattern()
+# Il ne reste maintenant qu'un patron de non réponse.
 
-river_dt[, snd_pc_uav := imputed_soils[, snd_pc_uav]]
-river_dt[, cly_pc_uav := imputed_soils[, cly_pc_uav]]
-river_dt[, slt_pc_uav := imputed_soils[, slt_pc_uav]]
 
-river_dt[, snd_pc_cav := NULL]
-river_dt[, cly_pc_cav := NULL]
-river_dt[, slt_pc_cav := NULL]
+# Vérifions si le dernier patron est MCAR --------------------------------------
+
+
+navigation_var <- c(
+   "HYRIV_ID",   # Identifiant des segments de rivière
+   "NEXT_DOWN",  # HYRIV_ID du prochain segment en aval 
+   "MAIN_RIV"    # HYRIV_ID du segment de rivière le plus en aval de ce bassin
+)
+mcar_test(river_dt[, -navigation_var, with = FALSE])
+# Selon le test de Little, le patron de non réponse n'est pas MCAR.
+# Cependant, ce test est peu fiable.
+# Voyons avec un test t:
+
+
+river_dt[, patron := 0]
+river_dt[is.na(snd_pc_uav), patron := 1]
+t_test_res <- t_test_by_patron(river_dt, "patron")
+setorder(t_test_res, p_value)
+t_test_res[p_value < 0.05]
+# On conclu que la moyenne des autres variables est significativement différentes
+# en présence du patron de non-réponse
+
+
+# On est maintenant confiant que le patron de non-réponse n'est pas MCAR.
+river_dt[, patron := NULL]
+
+
+# Analyse géographique du patron de non-réponse --------------------------------
+
+
+# Dans la documentation du jeu de données, on apprend que le dernier patron de
+# non réponse n'inclut que des variables de la base de données suivante:
+# [SoilGrids1km; Hengl et al. 2014]
+# 
+# De plus, on y voit que les données de composition du sol sont manquantes
+# puisqu'elles se trouvent dans des grands bassins d'eau tels que des lacs.
+# Validons cette affirmation:
+
+river_vec <- terra::vect(
+   shape_file_path,
+   extent = ext(c(-79.85, -55.53, 45.04, 62.80))
+)
+river_vec <- sf::st_as_sf(river_vec)
+leaflet(river_vec[river_vec$slt_pc_uav == -999, ]) %>%
+   addTiles() %>%
+   addPolylines()
+
+# C'est effectivement le cas.
+
+
+# En conclusion, comme la non réponse pouvait être prédite selon la variable de
+# pourcentage de couverture par des lacs dans le bassin (lka_pc_cse) et que
+# celle-ci était associée à des valeurs significativement différentes pour les
+# autres variables, on peut affirmer que le patron de non-réponse est MAR.
+
+# Néanmoins, l'objectif de ce travail est de prédire le débit d'eau des rivières.
+# Comme il n'y a pas de sens à calculer un débit d'eau dans un lac, nous allons 
+# simplement retirer ces observations du jeu de données.
+
+river_dt <- na.omit(river_dt)
 
 
 # Sauvegarder les données résultantes ------------------------------------------
