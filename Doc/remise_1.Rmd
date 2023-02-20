@@ -36,7 +36,7 @@ inst_load_packages(libs)
 
 
 data_path <- "../Data/s1_donnees_filtrees.rds"
-shape_file_path <- "../Data/RiverATLAS_Data_v10_shp/RiverATLAS_v10_shp/RiverATLAS_v10_na.shp"
+shape_file_path <- "../Data/RiverATLAS_Data_v10_shp/RiverATLAS_v10_shp"
 
 
 # Charger les données ----------------------------------------------------------
@@ -167,7 +167,7 @@ river_dt <- river_dt[, !grep("cav", col_w_na, value = TRUE), with = FALSE]
 
 #### Pourcentage par patron de non-réponse
 
-Nous voyons dans le Tableau 2.1.3 le seul patron de non-réponse de notre jeu de données ainsi que la proportion des observations qui y est associé. Celui-ci est composé des variables de la composition du sol et il représente 0.06% de nos données. À noter que chacune de ces quatres variables proviennent d'une même source de données: [SoilGrids1km; Hengl et al. 2014].
+Nous voyons dans le Tableau 2.1.3 le seul patron de non-réponse de notre jeu de données ainsi que la proportion des observations qui y est associé. Celui-ci est composé des variables de la composition du sol et il représente 0.06% de nos données. À noter que chacune de ces quatres variables proviennent d'une même source de données: [SoilGrids1km; Hengl et al. 2014](https://www.isric.org/explore/soilgrids).
 
 ```{r}
 
@@ -234,7 +234,7 @@ Comme le calcul du débit d'eau dans un lac n'a pas vraiment de sens, on peut si
 
 #### Distribution des autres variables
 
-Nous faisons une analyse préliminaire pour évaluer si les données sont manquantes de façon complètement aléatoire. Pour ce faire, nous commençons à comparer les graphique de la distribution de variables explicatives pour les observations qui ne font pas parties du patron ($patron = 0$) au graphique de la même variable mais avec les observation qui font partie de ce patron ($patron = 1$). Nous montrons quelques exemples de variables dont la distribution changent en fonction de si les observations font parties du patron ou non ce qui suggère que nous ne sommes pas en présence de valeurs manquantes complètement aléatoire. 
+Nous faisons une analyse préliminaire pour évaluer si les données sont manquantes de façon complètement aléatoire. Pour ce faire, nous commençons à comparer les graphique de la distribution de variables explicatives pour les observations qui ne font pas parties du patron (`patron = 0`) au graphique de la même variable mais avec les observation qui font partie de ce patron (`patron = 1`). Nous montrons quelques exemples de variables dont la distribution changent en fonction de si les observations font parties du patron ou non ce qui suggère que nous ne sommes pas en présence de valeurs manquantes complètement aléatoire. 
 
 ```{r}
 river_dt[, patron := 0]
@@ -249,7 +249,7 @@ river_dt[is.na(snd_pc_uav), patron := 1]
 graph_density(river_dt, var = "dis_m3_pyr", color = "patron")
 ```
 
-On voit que la distribution de du débit d'eau moyen pour les observations manquantes ont beaucoup plus de poids dans les extrêmes et possède une moyenne largement plus grande.
+On voit que la distribution du débit d'eau moyen pour les observations manquantes ont beaucoup plus de poids dans les extrêmes et possède une moyenne largement plus grande.
 
 ::::
 
