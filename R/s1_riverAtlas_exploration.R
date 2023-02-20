@@ -47,20 +47,19 @@ output_path <- "Data/s1_donnees_filtrees.rds"
 
 
 # Chargement des données sous la forme d'un SpatVector (Vecteur spatial)
-river_atlas <- terra::vect(file.path(data_path, "RiverATLAS_v10_na.shp"))
+river_atlas <- terra::vect(
+   file.path(data_path, "RiverATLAS_v10_na.shp")
+   extent = EXTENT
+)
 
 # Visualisation de l'objet
+plot(river_atlas_croped)
 river_atlas
 
 # Visualisation des champs disponibles
 names(river_atlas)
 # Pour une description détaillée des champs, voir le fichier pdf
 # RiverAtlas_Catalog_v10.pdf
-
-# Restreindre l'étendue de la carte au Québec
-river_atlas_croped <- terra::crop(river_atlas, EXTENT)
-river_atlas_croped
-plot(river_atlas_croped)
 
 
 # Identifier les variables nous permettant de naviguer dans les données.
