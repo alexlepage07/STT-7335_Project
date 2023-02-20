@@ -227,8 +227,6 @@ leaflet(river_vec[river_vec$slt_pc_uav == -999, ]) %>%
 
 ```
 
-Comme le calcul du débit d'eau dans un lac n'a pas vraiment de sens, on peut simplement retirer ces observations du jeu de données.
-
 
 ### Identifier le mécanisme de non-réponse
 
@@ -311,7 +309,10 @@ t_test_res[order(p_value, decreasing = TRUE)] %>%  knitr::kable(
 
 ```
 
-Nous remarquons que `r sum(t_test_res$p_value < 0.05)` tests ont un seuil observé en dessous de 5%. Cela signifie que pour ces tests la moyenne de la variable évaluée est significativement différente pour les valeurs observées de la moyenne de celles manquantes. Or, faire autant de _test-t_'s a ses limites. En effet, puisque nous faisons au total `r nrow(t_test_res)`, nous avons le problème de comparaisons multiples qui implique que même si toutes les moyennes étaient réellement égales une partie des tests seraient rejettées. Or, dans notre cas, une très grande partie le sont ce qui appuie notre hypothèse comme quoi les données ne sont pas manquantes complètement aléatoirement.
+Nous remarquons que `r sum(t_test_res$p_value < 0.05)` tests ont un seuil observé en dessous de 5%. Cela signifie que pour ces tests la moyenne de la variable évaluée est significativement différente en présence ou non du patron de non-réponse.
+
+En revanche, faire autant de _test-t_'s a ses limites. En effet, puisque nous faisons au total `r nrow(t_test_res)`, nous avons le problème de comparaisons multiples qui implique que, même si toutes les moyennes étaient réellement égales, une partie des tests seraient rejetée. Or, dans notre cas, une très grande partie le sont ce qui appuie notre hypothèse comme quoi les données ne sont pas manquantes complètement aléatoirement.
+
 
 #### Test de Little
 
@@ -319,7 +320,7 @@ Pour valider nos analyses préliminaires, nous utilisons le test de _Little_, qu
 
 
 $$d^2 = \sum_{j = 1}^J (\hat{\mu}_j - \hat{\mu}_j^{ML})\hat\Sigma_j^{-1}(\hat{\mu}_j - \hat{\mu}_j^{ML})$$
-Si les données sont manquantes de façon complètement aléatoire, nous aurons que $d^2 \sim \chi_{\sum_{j=1}^J k_j-k}$. 
+Si les données sont manquantes de façon complètement aléatoire, nous aurons que $$d^2 \sim \chi_{\sum_{j=1}^J k_j-k}.$$ 
 
 ```{r, warning = FALSE}
 
@@ -329,13 +330,18 @@ res <- mcar_test(river_dt[, nm[toupper(nm) != nm], with = FALSE])
 
 ```
 
-En utilisant la formule `naniar::mcar_test`, nous obtenons que le seuil observé de `r res$p.value` qui confirme notre hypothèse. On rejette, donc, l'hypothèse $H_0 :$ Données manquantes avec un mécanisme _MCAR_.
+En utilisant la formule `naniar::mcar_test`, nous obtenons que le seuil observé est de `r res$p.value` qui confirme notre hypothèse. On rejette, donc, l'hypothèse $H_0 :$ Données manquantes avec un mécanisme _MCAR_.
 
-#### MAR ou MNAR?
 
-Les valeurs manquantes des variables de constituions du sol dépendent, à notre avis, des autres variables observées. À compléter !
+#### Conclusion de l'analyse
+En conclusion, comme la non-réponse pouvait être prédite selon la variable de
+pourcentage de couverture des lacs dans le bassin (`lka_pc_cse`) et que
+ce patron était associé à des valeurs significativement différentes pour les
+autres variables, on peut affirmer que le patron de non-réponse est MAR.
 
-### Traitement de la non-réponse
+Évidemment, le fait de retirer des données MAR peut introduire un biais.
+Néanmoins, l'objectif de ce travail est de prédire le débit d'eau des rivières. Comme il n'y a pas de sens à calculer un débit d'eau dans un lac, nous allons simplement retirer ces observations du jeu de données.
+
 
 ## 2.2 Réduction de la dimensionalité
 
