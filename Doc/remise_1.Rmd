@@ -53,7 +53,11 @@ river_dt <- setDT(readRDS(data_path))
 
 ## 1.2 Collecte de données
 
-Expliquer les biais possibles !
+La base de données est constituée de plus de 162000 observations pour 60 variables. Le données ont été collectées auprès de plusieurs sources différentes comprenant des universités (Berkeley par exemple), des institutions publiques ou encore de projet de collecte de données comme HydroSHEDS. Ces données n’ont donc pas été observées particulièrement pour la base de données obtenue, on peut donc conclure que la collecte de données est observationnelle.  
+Pour chaque variable, les données ont été réanalysées de sorte à minimiser les potentielles erreurs de mesure. Le nombre de données manquantes a été minimiser également par interpolation spatiale. On peut noter que cette interpolation est une première source de biais et une première surestimation de la corrélation entre les variables. 
+Nous allons donc analyser les différentes sources de biais et d’inexactitudes dans les données. Pour commencer, l’étendue des années de collecte des observations est très large, en effet, certaines observations datent du début des années 2000 et d’autres de la fin des années 2010. Cette différence dans les dates d’observation peut créer un biais, et influer sur les corrélations des variables. De plus, des variables (par exemple Stream Gradient) sont arbitrairement bornées par les collecteurs. Les valeurs extrêmes sont donc par conséquent retirées du jeu de données. On remarque également une réduction des valeurs pouvant être prises par des variables pour faciliter l’utilisation des données, on peut par exemple le voir sur les variables Climate Strata et Climate Zones qui passent de 125 valeurs possibles à seulement 18. Enfin, une bonne partie des variables résulte de spéculations ou de projections dans le futur suivant des modèles qui ne sont pas forcément exacts. On peut prendre l’exemple de la végétation potentielle sans activité humaine ou encore la progression des glaciers ou des permafrosts. 
+On peut également noter que l’année 2000 est prise en référence pour plusieurs variables sans explications pertinentes. On suppose que la raison principale réside dans le fait que les premières mesures « précises » ont été prises autour de cette année ou que l’année 2000 marque le début du siècle. 
+
 
 
 # 2. Premières analyses
