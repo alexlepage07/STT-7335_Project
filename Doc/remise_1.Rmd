@@ -346,3 +346,29 @@ Néanmoins, l'objectif de ce travail est de prédire le débit d'eau des rivièr
 ## 2.2 Réduction de la dimensionalité
 
 
+Notre objectif avec cette analyse en composantes principales était de faire un prétraitement des données. Nous avons été en mesure d’établir certaines relations entre différentes variables. On présente ces relations dans les lignes ci-dessous. 
+
+Pour la première composante principale
+Les variables corrélées positivement sont `pre_nn_xxx` (poids de 0,38 qui représente la quantité de précipitation), `gwt_cn_cav` (0,18 est la profondeur de la nappe phréatique) alors que `slp_dg_cav`/`uav` (0,14 correspond à la pente du terrain).
+
+Les variables corrélées négativement sont `hdi_ix_cav` (-0,13 qui est l’indice de développement humain), `prm_pc_cse` / use (-0,11 correspond au pergélisol).
+
+Pour la seconde composante principale
+Les variables qui présentent une corrélation positive sont `rev_nc_usu` (0,34 le volume du réservoir), `ria_ha_csu`/`usu` (0,40 la surface de la rivière) et `riv_tc_csu`/`usu` (0,45 le volume de la rivière).
+
+Les variables pour lesquelles on observe une corrélation négative correspondent à `ero_kh_cav` (-0,14 qui est l’érosion du sol) alors que `slp_dg_cav`/`uav` (-0,14 est la pente du terrain), `syr_dk_rav` (-0,12 le gradient de l’affluent) et finalement `gwt_cn_cav` (-0,12 la profondeur de la nappe phréatique).
+
+Pour la troisième composante principale
+Les variables avec une corrélation positive sont `gwt_cn_cav` (0,36 profondeur de la nappe phréatique), `slp_dg_uav`/`cav` (0,41 est la pente du terrain) tandis que `sgr_dk_rad` (0,26 est le gradient de l’affluent) et finalement `ero_hk_cav`/`uav` (0,40 correspond à l’érosion).
+
+#### L’interprétation 
+
+La première composante principale correspond à des rivières qui ont accès à de l’eau *courante* puisqu’on récupère de l’eau de pluie, mais la nappe phréatique serait assez profonde et on est devant un terrain qui est en pente. Possiblement que nous pourrions être en présence de rivières moins impactées par l'activité anthropique.
+
+Quant à la deuxième composante principale, celle-ci indiquerait plus des rivières qui ont accès à des grandes quantités d’eau et l’eau serait plus statique. On est devant une corrélation négative entre la pente du terrain et l'érosion.
+
+Pour la troisième composante principale, on serait en présence de rivières qui ont un terrain en pente ainsi qu’une nappe phréatique profonde.
+
+Contrairement à la première composante principale, on n’observe pas de relation significative par rapport à des variables qui indiquent le volume de la rivière ou la quantité de précipitations. On remarque que la variable `dis_n3_pyr` est corrélée positivement de manière importante avec la seconde composante principale. 
+
+On constate que 78,9% de la variabilité de la variable dis_n3_pyr est expliquée par la seconde composante principale alors que c’est 0% pour la première composante principale et 8,8% pour la troisième composante principale. Néanmoins, il est plausible de penser que la première composante principale est corrélée avec la variable d’intérêt à cause de la quantité de pluie. Il est probable que la première composante principale soit en corrélation avec la variable d’intérêt mais de façon non linéaire.
