@@ -22,91 +22,75 @@
 
 library(assertthat)
 library(data.table)
+library(tidymodels)
 library(tidyverse)
 
 
 # Chemins d'accès --------------------------------------------------------------
 
 
-input_path <- "Data/s2_donnees_sol_pc_imputees.rds"
+input_path <- "Data/s2_donnees_imputees.rds"
 output_path <- "Data/s3_donnees_standardisees.rds"
 
 
 # Charger les données ----------------------------------------------------------
 
 
-river_df <- readRDS(input_path)
+river_dt <- readRDS(input_path)
 
 
 # Standardiser les pourcentages ------------------------------------------------
 
-var_pc <- names(river_df)[names(river_df) %like% "_pc_"]
-summary(river_df[, sort(var_pc)])
 
-river_dt <- as.data.table(river_df)
-river_dt <- cbind(
-   river_dt[, -var_pc, with = FALSE],
-   river_dt[, lapply(.SD, as.double), .SDcols = var_pc]
+recette_standardisation_pourcentages <- 
+   recipes::recipe(dis_m3_pyr ~ ., data = river_dt) %>%
+   step_select(contains("_pc_")) %>%
+   step_mutate_at(where(~max(.x) > 100), fn = ~ min(.x, 100)) %>%
+   step_mutate_at(everything(), fn = ~ .x / 100) %>%
+   step_rm(where(~var(.x) == 0)) %>%
+   prep()
+
+percentages_dt <- 
+   recette_standardisation_pourcentages %>%
+   bake(river_dt) %>% 
+   as.data.table()
+
+summary(percentages_dt)
+
+
+# Standardiser les grandes valeurs ---------------------------------------------
+
+
+recette_standardisation_grands_nombres <- 
+   recipes::recipe(dis_m3_pyr ~ ., data = river_dt) %>%
+   step_rm(where(is.factor), contains("_pc_")) %>%
+   step_rm(1:3) %>%
+   step_mutate_at(where(~ min(.x) == 0), fn=~ .x + 1) %>%
+   step_BoxCox(everything(), -hdi_ix_cav, limits = c(-8, 5)) %>%
+   step_normalize(everything(), -dis_m3_pyr) %>%
+   prep()
+
+grandes_valeurs_dt <- 
+   recette_standardisation_grands_nombres %>%
+   bake(river_dt) %>% 
+   as.data.table()
+
+summary(grandes_valeurs_dt)
+
+
+# Combiner les données transformées --------------------------------------------
+
+
+donnees_standardisees <- cbind(
+   river_dt[, 1:3],
+   river_dt %>% select(where(is.factor)),
+   percentages_dt,
+   grandes_valeurs_dt
 )
-
-river_dt[cly_pc_cav != -999, cly_pc_cav := cly_pc_cav / 100]
-river_dt[cly_pc_uav != -999, cly_pc_uav := cly_pc_uav / 100]
-river_dt[slt_pc_cav != -999, slt_pc_cav := slt_pc_cav / 100]
-river_dt[slt_pc_uav != -999, slt_pc_uav := slt_pc_uav / 100]
-river_dt[snd_pc_cav != -999, snd_pc_cav := snd_pc_cav / 100]
-river_dt[snd_pc_uav != -999, snd_pc_uav := snd_pc_uav / 100]
-
-river_dt[, dor_pc_pva := dor_pc_pva / max(dor_pc_pva)]
-river_dt[, lka_pc_cse := lka_pc_cse / max(lka_pc_cse)]
-river_dt[, lka_pc_use := lka_pc_use / max(lka_pc_use)]
-
-river_dt[, for_pc_cse := for_pc_cse / 100]
-river_dt[, for_pc_use := for_pc_use / 100]
-river_dt[, ire_pc_cse := ire_pc_cse / 100]
-river_dt[, ire_pc_use := ire_pc_use / 100]
-river_dt[, kar_pc_cse := kar_pc_cse / 100]
-river_dt[, kar_pc_use := kar_pc_use / 100]
-river_dt[, prm_pc_cse := prm_pc_cse / 100]
-river_dt[, prm_pc_use := prm_pc_use / 100]
-river_dt[, snw_pc_cyr := snw_pc_cyr / 100]
-river_dt[, snw_pc_uyr := snw_pc_uyr / 100]
-river_dt[, swc_pc_cyr := swc_pc_cyr / 100]
-river_dt[, swc_pc_uyr := swc_pc_uyr / 100]
-
-wet_variables <- var_pc[var_pc %like% "wet_pc"]
-river_dt_wet <- river_dt[
-   , lapply(.SD, function(x) x / 100), .SDcols = wet_variables]
-
-river_dt <- cbind(river_dt[,-wet_variables, with = FALSE], river_dt_wet)
-
-summary(river_dt)
-
-
-# Normaliser les grands nombres ------------------------------------------------
-
-
-data_to_normalize <- river_dt %>%
-   select(where(~ is.numeric(.x) && max(.x) > 1), - dis_m3_pyr)
-
-var_to_normalize <- names(data_to_normalize)
-
-river_dt_normalised <- data_to_normalize %>%
-   mutate_all(function(x) (x - mean(x)) / sd(x))
-
-summary(river_dt_normalised)
-
-river_dt <- cbind(
-   river_dt[, -var_to_normalize, with = FALSE],
-   river_dt_normalised
-)
-
-
-# Vérifier qu'aucune colonne s'est perdu en chemin
-assertthat::assert_that(all(dim(river_dt) == dim(river_df)))
 
 
 # Sommaire post-transformations
-summary(river_dt)
+summary(donnees_standardisees)
 
 
 # Sauvegarder les données transformées -----------------------------------------
