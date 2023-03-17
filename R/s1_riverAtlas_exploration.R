@@ -48,7 +48,7 @@ output_path <- "Data/s1_donnees_filtrees.rds"
 
 # Chargement des données sous la forme d'un SpatVector (Vecteur spatial)
 river_atlas <- terra::vect(
-   file.path(data_path, "RiverATLAS_v10_na.shp")
+   file.path(data_path, "RiverATLAS_v10_na.shp"),
    extent = EXTENT
 )
 
