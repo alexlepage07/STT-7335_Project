@@ -1,0 +1,71 @@
+---
+title: "Projet"
+output: 
+  html_document:
+    css: style.css
+---
+
+```{r, include = FALSE}
+
+# Paramètres pour le .Rmd
+knitr::opts_chunk$set(
+   echo = FALSE
+)
+
+```
+
+# Contexte et objectifs (1/2 page)
+
+- Contexte
+- Objectifs
+- Hypothèses
+
+# Préparation et nettoyage des données (1 page)
+
+- Source
+- Description
+- Type de variables
+- Vérifier les doublons
+- Vérifier les erreurs de saisie
+- Uniformisation des valeurs
+- Validation de fusion de tables
+
+# Analyse descriptive et exploratoire (2-3 pages)
+
+- Type d’échantillon
+- Nombre d'observations et variables
+- Analyse descriptive uni et multivariées
+- Identification des valeurs extrêmes et aberrantes (+ traitées)
+- Gestion des données manquantes 
+Doit se faire sur la jeu de données d'entraînement (voir p.245 ESL)
+- Création de nouvelles variables
+- Identification de la dépendance
+- Pré-sélection de variables
+- Identification d'interactions possibles
+
+## Préselection de variables 
+
+Pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Les détails expliquant le choix de ce type de modèle se trouve dans la section suivante. Toutefois, une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. Pour ce faire, nous entraînons une forêt aléatoire pour faire une sélection basée sur l'importance des variables. Par la suite, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et nous défaire de la multicolinéarité.
+
+Il est à noter que ces deux étapes se font sur le jeu d'entraînement seulement. En effet, comme il est mentionné, dans _Element of Statistical Learning_^[The elements of statistical learning : data mining, inference, and prediction, p. 245], l'objectif, dans une stratégie de validation, est d'avoir un jeu de données de test qui est indépendant du modèle que l'on entraîne. Or, si nous faisons la sélection des variables explicatives, sur l'ensemble de notre jeu de données, cette indépendance ne sera pas respectée puisque le modèle sera basé sur une sélection de variables explicatives qui ont été sélectionnées partiellement à partir du jeu de test. 
+
+- Forêt aléatoire 
+      
+
+
+
+
+# Modélisation et validation (1-2 pages)
+
+- Pertinence du modèle
+- Choix des hyperparamètres + stratégie de validation
+- Choix des métriques
+
+# Analyse, discussion et conclusion (2-3 pages)
+
+- Performance des modèles
+- Enjeux éthiques
+- Recommandation du modèle? 
+
+# Annexe
+

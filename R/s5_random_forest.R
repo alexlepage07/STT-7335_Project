@@ -33,7 +33,8 @@ inst_load_packages(libs)
 # Chemins d'accès --------------------------------------------------------------
 
 input_path <- "Data/s2_donnees_imputees.rds"
-output_path <- "Data/s5_random_forest.rds"
+output_path_model <- "inst/s5_random_forest.rds"
+output_path_graph <- "inst/s5_"
 
 # Charger le jeu de données ----------------------------------------------------
 
@@ -112,8 +113,13 @@ final_fit <-
    last_fit(split_dt) 
 
 # Obtenir l'importance des variables
-final_fit %>%
-   extract_fit_parsnip() %>%
-   vip()
+final_model <- 
+   final_fit %>%
+   extract_fit_parsnip()
+
+# Sauvegarder les données résultantes ------------------------------------------
+
+
+saveRDS(final_model, output_path_model, compress = "xz")
 
 
