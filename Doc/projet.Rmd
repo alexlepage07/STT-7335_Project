@@ -91,7 +91,7 @@ show_imp_var(rf_model$fit, nb_var = 15)
 
 **Constats :**
 
-Les trois variables qui ont le plus d'importance selon ce modèle et cette méthode pour calculer l'importance des variables sont liées aux caractéristiques de la rivière. Les deux premières, soient le volume et l'aire de la rivière, sont probablement fortement corrélées. L'analyse des composantes principales pourra nous indiquer si c'est le cas et si nous devons garder les deux. Par ailleurs, nous voyons que nous avons par deux fois la variable de précipitations printanières moyennes : une fois pour le mois d'avril et une autre fois pour le mois de mars. Encore une fois, il est fort probable que c'est deux soient corrélés et nous validerons si c'est le cas.
+Les trois variables qui ont le plus d'importance selon ce modèle et cette méthode pour calculer l'importance des variables sont liées aux caractéristiques de la rivière. Les deux premières, soient le volume et l'aire de la rivière, sont probablement fortement corrélées. L'analyse des composantes principales pourra nous indiquer si c'est le cas et si nous devons garder les deux. Par ailleurs, nous voyons que nous avons par deux fois la variable de précipitations printanières moyennes : une fois pour le mois d'avril et une autre fois pour le mois de mars. Encore une fois, il est fort probable que ces deux soient corrélées et nous validerons si c'est le cas.
 
 Pour sélectionner les variables, plusieurs options s'offrent à nous. Nous pouvons sélectionner soient un nombre fixé de variables explicatives. Également, nous pourrions couper à partir d'un certain seuil d'importance de variable. 
 
