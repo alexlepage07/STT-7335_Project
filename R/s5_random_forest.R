@@ -25,7 +25,8 @@ source("./R/utils.R")
 
 libs <- c("data.table",
           "ranger",
-          "tidymodels")
+          "tidymodels",
+          "vip")
 
 inst_load_packages(libs)
 
@@ -57,7 +58,9 @@ tune_spec <- rand_forest(
    min_n = tune()
 ) %>% 
    set_engine(
-      engine = "ranger"
+      engine = "ranger",
+      importance = "permutation",
+      scale.permutation.importance = TRUE
    ) %>% 
    set_mode(
       mode = "regression"
@@ -92,9 +95,25 @@ forest_res <-
 
 # Modèle final -----------------------------------------------------------------
 
-# Est-ce qu'on priorise le EQM? Ou l'EQA? Est-ce qu'on a beaucoup de valeurs 
-# extrêmes que l'on voudrait éviter qu'ils aillent trop d'influence?
-
 # Sélectionner le meilleur modèle basé sur la mesure de performance choisie
 best_forest <- forest_res %>%
    select_best(metric = "rmse")
+
+# Mettre à jour le workflow avec les hyperparamètres venant maximiser la 
+# métrique de performance visée
+final_wf <- forest_wf %>% 
+   finalize_workflow(
+      best_forest
+   )
+
+# Faire le dernier entraînement
+final_fit <- 
+   final_wf %>%
+   last_fit(split_dt) 
+
+# Obtenir l'importance des variables
+final_fit %>%
+   extract_fit_parsnip() %>%
+   vip()
+
+
