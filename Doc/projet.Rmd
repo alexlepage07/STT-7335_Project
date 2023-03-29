@@ -76,7 +76,7 @@ Il est à noter que ces deux étapes se font sur le jeu d'entraînement seulemen
 
 La forêt aléatoire entraînée pour la préselection a été construite à partir de la librairie R _ranger_ (pour avoir de détails sur la méthodologie, se réfèrer à l'annexe). L'importance des variables est obtenu à partir de la permutation des variables explicatives du jeu de données _Out of the Bag_ (OOB). Comme décrit dans _ELS_^[The elements of statistical learning : data mining, inference, and prediction, p. 593], l'idée générale est que, pour chaque arbre, nous avons un jeu de donnée laissé à part (OOB) que nous utilisons pour calculer, pour chaque variable explicatives, l'augmentation de l'erreur ou la diminution de l'exactitude entre les prédictions du jeu de données non-modifié et celles du jeu de données où nous permutons les valeurs de la variable évaluée. À chaque itération, en venant calculer l'impact sur un jeu de données indépendant des données vues par l'arbre entraîné, nous avons un portrait adéquat des variables importantes en généralisation, et non, importantes pour entraîner le modèle. Dans la librairie _ranger_, l'importance des variables est calculé à partir de la méthode décrite dans l'article _A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif_^[Janitza, S., Celik, E. & Boulesteix, A.-L., (2015). A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif doi: 10.1007/s116340160276- 4].
 
-<span style="color:red">Quelle mesure de performance pour l'importance?</span>
+<span style="color:red">Quelle mesure de performance pour l'importance? Comment l'interpréter? À ajouter pour trouver les limites possibles</span>
       
 Nous affichons les 15 variables les plus importantes basée sur la méthode précédemment décrite :
 
@@ -89,8 +89,11 @@ show_imp_var(rf_model$fit, nb_var = 15)
 
 ```
 
+**Constats :**
 
+Les trois variables qui ont le plus d'importance selon ce modèle et cette méthode pour calculer l'importance des variables sont liées aux caractéristiques de la rivière. Les deux premières, soient le volume et l'aire de la rivière, sont probablement fortement corrélées. L'analyse des composantes principales pourra nous indiquer si c'est le cas et si nous devons garder les deux. Par ailleurs, nous voyons que nous avons par deux fois la variable de précipitations printanières moyennes : une fois pour le mois d'avril et une autre fois pour le mois de mars. Encore une fois, il est fort probable que c'est deux soient corrélés et nous validerons si c'est le cas.
 
+Pour sélectionner les variables, plusieurs options s'offrent à nous. Nous pouvons sélectionner soient un nombre fixé de variables explicatives. Également, nous pourrions couper à partir d'un certain seuil d'importance de variable. 
 
 # Modélisation et validation (1-2 pages)
 

@@ -176,7 +176,7 @@ translate_var <- function(vars) {
       ria_ha = "Aire de la rivière (en hectares)",
       wet_cl = "Classification des zones humides",
       pre_mm = "Précipitations printanières moyennes (en mm) : ",
-      wet_pc = "Proportion occupée par chacune la classe de terres humides : ",
+      wet_pc = "Proportion occupée par la classe de terres humides : ",
       prm_pc = "Proportion de terre faisant partie du pergélisol (sol gelé en permanence)",
       gwt_cm = "Profondeur des nappes phréatiques (en cm)",
       slp_dg = "Inclinaison du terrain (en degrés)",
