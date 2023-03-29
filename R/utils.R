@@ -160,38 +160,33 @@ translate_var <- function(vars) {
    
    # À compléter
    map <- list(
-      dis_m3_pyr = "Débit d'eau moyen (en m\U00B3/s)",
-      rev_mc_usu = "Volume du réservoir d'eau (en million m\U00B3)",
-      dor_pc_pva = "Degré de régulation du réservoir (en %)",
-      lka_pc_cse = "Pourcentage de terre qui correspond à des lacs (en %) (cse)",
-      lka_pc_use = "Pourcentage de terre qui correspond à des lacs (en %) (use)",
-      
-      snd_pc_cav = "Proportion de sable (en %) (cav)",
-      snd_pc_uav = "Proportion de sable (en %) (uav)",
-      snd_pc     = "Proportion de sable (en %)",
-      cly_pc_cav = "Proportion d'argile (en %) (cav)",
-      cly_pc_uav = "Proportion d'argile (en %) (uav)",
-      cly_pc     = "Proportion d'argile (en %)",
-      slt_pc_cav = "Proportion de limon (en %) (cav)",
-      slt_pc_uav = "Proportion de limon (en %) (uav)",
-      slt_pc     = "Proportion de limon (en %)",
-      soc_th_cav = "Quantité moyenne de carbone dans les 5 premiers centimètres de sol (en tonnes/hectar) (cav)",
-      soc_th_uav = "Quantité moyenne de carbone dans les 5 premiers centimètres de sol (en tonnes/hectar) (uav)",
-      soc_th     = "Quantité moyenne de carbone dans les 5 premiers centimètres de sol (en tonnes/hectar)",
-      
-      for_pc_cse = "Proportion occupée par les forêts (cse)",
-      for_pc_use = "Proportion occupée par les forêts (use)",
-      
-      ero_kh_cav = "Érosion causé par les rivières en kg/hectare/année de roche (cav)",
-      ero_kh_uav = "Érosion causé par les rivières en kg/hectare/année de roche (uav",
-      
-      wet_cl_cmj = "Classification des zones humides"
+      dis_m3 = "Débit d'eau moyen (en m\U00B3/s)",
+      rev_mc = "Volume du réservoir d'eau (en million m\U00B3)",
+      dor_pc = "Degré de régulation du réservoir (en %)",
+      lka_pc = "Pourcentage de terre qui correspond à des lacs (en %) (cse)",
+      snd_pc = "Proportion de sable (en %)",
+      snd_pc = "Proportion de sable (en %)",
+      cly_pc = "Proportion d'argile (en %)",
+      slt_pc = "Proportion de limon (en %)",
+      soc_th = "Quantité moyenne de carbone dans les 5 premiers centimètres de sol (en tonnes/hectar)",
+      for_pc = "Proportion occupée par les forêts",
+      ero_kh = "Érosion causé par les rivières en kg/hectare/année de roche",
+      wet_cl = "Classification des zones humides",
+      riv_tc = "Volume de la rivière (en millier m\U00B3)",
+      ria_ha = "Aire de la rivière (en hectares)",
+      wet_cl = "Classification des zones humides",
+      pre_mm = "Précipitations printanières moyennes (en mm) : ",
+      wet_pc = "Proportion occupée par chacune la classe de terres humides : ",
+      prm_pc = "Proportion de terre faisant partie du pergélisol (sol gelé en permanence)",
+      gwt_cm = "Profondeur des nappes phréatiques (en cm)",
+      slp_dg = "Inclinaison du terrain (en degrés)",
+      lit_cl = "Classes lithologiques (type de roches)"
    )
    
    translation <- vapply(
       vars, 
       function(x) {
-         res <- map[[x]]
+         res <- map[[substr(x, 1, 6)]]
          if (is.null(res)) {
             res <- x
          }
@@ -200,7 +195,13 @@ translate_var <- function(vars) {
       character(1L)
    ) %>% unname()
    
-   return(translation)
+   translation <- fifelse(
+      substr(vars, 1, 6) %in% c("wet_pc", "pre_mm"),
+      paste0(translation, substr(vars, nchar(vars) - 1, nchar(vars))),
+      translation
+   )
+   
+   translation
    
 }
 
@@ -310,4 +311,35 @@ mod_missing_wet_cl_cmj <- function(dt) {
    
 }
 
+
+# Fonction pour afficher l'importance des variables 
+
+show_imp_var <- function(mod_obj, nb_var = 10) {
+   
+   stopifnot("variable.importance" %in% names(mod_obj))
+   
+   var_imp <- sort(mod_obj$variable.importance, decreasing = TRUE)[1:nb_var]
+   
+   ggplot() +
+      geom_bar(
+         mapping = aes(
+            x = var_imp,
+            y = factor(
+               translate_var(names(var_imp)), 
+               levels = unique(translate_var(names(var_imp)))
+            ), 
+         ),
+         stat = "identity",
+         orientation = "y"
+      ) +
+      labs(
+         x = "Importance de la variable",
+         y = "Variables"
+      ) + 
+      theme(
+         text = element_text(family = "Times New Roman")
+      )
+   
+   
+}
 

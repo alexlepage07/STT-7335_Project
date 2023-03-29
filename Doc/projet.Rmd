@@ -7,10 +7,33 @@ output:
 
 ```{r, include = FALSE}
 
-# Paramètres pour le .Rmd
+# Paramètres pour le .Rmd ------------------------------------------------------
+
+
 knitr::opts_chunk$set(
-   echo = FALSE
+   echo = FALSE,
+   align = "c"
 )
+
+
+# Chemins d'accès --------------------------------------------------------------
+
+
+path_data <- "../Data"
+path_obj <- "../inst"
+path_fct <- "../R"
+
+
+# Charger les objets -----------------------------------------------------------
+
+
+rf_model <- readRDS(file.path(path_obj, "s5_random_forest.rds"))
+
+
+# Charger les fonctions utiles -------------------------------------------------
+
+
+source(file.path(path_fct, "utils.R"))
 
 ```
 
@@ -51,10 +74,20 @@ Il est à noter que ces deux étapes se font sur le jeu d'entraînement seulemen
 
 - Forêt aléatoire 
 
-La forêt aléatoire entraînée pour la préselection a été construite à partir de la librairie R _ranger_ (pour avoir de détails sur la méthodologie, se réfèrer à l'annexe). L'importance des variables est obtenu à partir de la permutation des variables explicatives du jeu de données _Out of the Bag_ (OOB). Comme décrit dans _ELS_^[The elements of statistical learning : data mining, inference, and prediction, p. 593], l'idée générale est que, pour chaque arbre, nous avons un jeu de donnée laissé à part (OOB) que nous utilisons pour calculer, pour chaque variable explicatives, l'augmentation de l'erreur ou la diminution de l'exactitude des prédictions du jeu de données non-modifié et celles du jeu de données où nous permutons les valeurs de la variable évaluée. À chaque itération, en venant calculer l'impact sur un jeu de données indépendant des données vues par l'arbre entraîné, nous avons un portrait adéquat des variables importantes en généralisation, et non, importantes pour entraîner le modèle. Dans la librairie _ranger_, l'importance des variables est calculé à partir de la méthode décrite dans l'article _A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif_^[Janitza, S., Celik, E. & Boulesteix, A.-L., (2015). A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif doi: 10.1007/s116340160276- 4].
+La forêt aléatoire entraînée pour la préselection a été construite à partir de la librairie R _ranger_ (pour avoir de détails sur la méthodologie, se réfèrer à l'annexe). L'importance des variables est obtenu à partir de la permutation des variables explicatives du jeu de données _Out of the Bag_ (OOB). Comme décrit dans _ELS_^[The elements of statistical learning : data mining, inference, and prediction, p. 593], l'idée générale est que, pour chaque arbre, nous avons un jeu de donnée laissé à part (OOB) que nous utilisons pour calculer, pour chaque variable explicatives, l'augmentation de l'erreur ou la diminution de l'exactitude entre les prédictions du jeu de données non-modifié et celles du jeu de données où nous permutons les valeurs de la variable évaluée. À chaque itération, en venant calculer l'impact sur un jeu de données indépendant des données vues par l'arbre entraîné, nous avons un portrait adéquat des variables importantes en généralisation, et non, importantes pour entraîner le modèle. Dans la librairie _ranger_, l'importance des variables est calculé à partir de la méthode décrite dans l'article _A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif_^[Janitza, S., Celik, E. & Boulesteix, A.-L., (2015). A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif doi: 10.1007/s116340160276- 4].
 
 <span style="color:red">Quelle mesure de performance pour l'importance?</span>
       
+Nous affichons les 15 variables les plus importantes basée sur la méthode précédemment décrite :
+
+```{r}
+
+
+# Afficher les variables importantes
+show_imp_var(rf_model$fit, nb_var = 15)
+
+
+```
 
 
 
