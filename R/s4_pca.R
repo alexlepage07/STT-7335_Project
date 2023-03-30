@@ -37,7 +37,9 @@ inst_load_packages(libs)
 
 
 input_path <- "Data/s2_donnees_imputees.rds"
-output_path_obj <- "inst/s4_pca.rds"
+output_path <- "Data/s4_donnees_var_retirees.rds"
+output_path_pca1 <- "inst/s4_pca1.rds"
+output_path_pca2 <- "inst/s4_pca2.rds"
 
 
 # Charger les données ----------------------------------------------------------
@@ -65,7 +67,7 @@ id_var <- c("HYRIV_ID",
 river_dt[, c(cat_var, id_var)] <- list(NULL)
 
 
-# PCA --------------------------------------------------------------------------
+# PCA  #1 ----------------------------------------------------------------------
 
 w <- which(names(river_dt) == "dis_m3_pyr")
 
@@ -74,15 +76,45 @@ pca <- PCA(X = river_dt,
            quanti.sup = w)
 
 
+# Sauvegarder l'objet résultant ------------------------------------------------
 
-  
+
+saveRDS(pca, output_path_pca1)
+
+
+# Modification des données -----------------------------------------------------
+
+
+nm <- names(river_dt)
+nm_dt <- data.table(
+  ini = nm,
+  pre = substr(nm, 1, 6)
+)
+
+nm_dt[, remove := rowid(pre) > 1 & substr(ini, 9, 9) != "0"]
+
+river_dt[, nm_dt[remove == TRUE]$ini] <- NULL
+
+
+# Sauvegarder les données résultantes ------------------------------------------
+
+
+saveRDS(river_dt, output_path, compress = "xz")
+
+
+# PCA #2 -----------------------------------------------------------------------
+
+w <- which(names(river_dt) == "dis_m3_pyr")
+
+# Réalisation du PCA
+pca <- PCA(X = river_dt, 
+           quanti.sup = w)
 
 
 # Sauvegarder l'objet résultant ------------------------------------------------
 
 
-saveRDS(pca, output_path_obj)
-
+saveRDS(pca, output_path_pca2)
 
 
 # Old --------------------------------------------------------------------------

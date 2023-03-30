@@ -28,7 +28,8 @@ path_fct <- "../R"
 
 
 rf_model <- readRDS(file.path(path_obj, "s5_random_forest.rds"))
-pca <- readRDS(file.path(path_obj, "s4_pca.rds"))
+pca1 <- readRDS(file.path(path_obj, "s4_pca1.rds"))
+pca2 <- readRDS(file.path(path_obj, "s4_pca2.rds"))
 
 
 # Charger les fonctions utiles -------------------------------------------------
@@ -83,7 +84,7 @@ Nous pouvons, toutefois, regarder le nombre de composantes nécessaire pour expl
 
 
 # Afficher la variance cumulée expliquée par composante
-graph_pca_var_cum(pca, threshold = 0.9)
+graph_pca_var_cum(pca1, threshold = 0.9)
 
 
 ```
@@ -94,7 +95,7 @@ Si nous utilisons plutôt la règle de Cattell, pour faire cette sélection, on 
 
 
 # Afficher le graphique pour appliquer la règle de Cattell
-graph_cattell(pca)
+graph_cattell(pca1)
 
 
 ```
@@ -105,7 +106,22 @@ Nous allons afficher les deux premières composantes avec la variable de débit 
 
 
 # Afficher les deux premières composantes
-graph_pca(pca)
+graph_pca(pca1)
+
+
+```
+
+<span style="color:red">Ajouter un tableau avec les corrélations.</span>
+
+Nous remarquons à partir de ce graphique que nous avons beaucoup de variable en double qui sont grandement corrélée, quasi parfaitement. Un exemple est la variable `pre_mm_uyr` et `pre_mm_cyr` qui sont les précipitations printanières moyennes (en mm), respectivement, dans le bassin versant et dans le bassin versant total en amont du point d'écoulement. Nous retirons ces doublons de variables qui ont vraiment peu de différence. Nous réduisons le nombre de variables de notre jeu de données de ~50 à ~35.
+
+On affiche de nouveau ce graphique :
+
+```{r}
+
+
+# Afficher les deux premières composantes
+graph_pca(pca2, nb_var = 10)
 
 
 ```
