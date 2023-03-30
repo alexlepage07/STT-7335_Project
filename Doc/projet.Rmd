@@ -28,6 +28,7 @@ path_fct <- "../R"
 
 
 rf_model <- readRDS(file.path(path_obj, "s5_random_forest.rds"))
+pca <- readRDS(file.path(path_obj, "s4_pca.rds"))
 
 
 # Charger les fonctions utiles -------------------------------------------------
@@ -68,11 +69,50 @@ Doit se faire sur la jeu de données d'entraînement (voir p.245 ESL)
 
 ## Préselection de variables 
 
-Pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Les détails expliquant le choix de ce type de modèle se trouve dans la section suivante. Toutefois, une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. Pour ce faire, nous entraînons une forêt aléatoire pour faire une sélection basée sur l'importance des variables. Par la suite, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et nous défaire de la multicolinéarité.
+Pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Les détails expliquant le choix de ce type de modèle se trouve dans la section suivante. Toutefois, une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. Pour ce faire, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et nous défaire de la multicolinéarité. Par la suite, nous entraînons une forêt aléatoire pour faire une sélection basée sur l'importance des variables.
 
-Il est à noter que ces deux étapes se font sur le jeu d'entraînement seulement. En effet, comme il est mentionné, dans _Element of Statistical Learning_ (_ELS_)^[The elements of statistical learning : data mining, inference, and prediction, p. 245], l'objectif, dans une stratégie de validation, est d'avoir un jeu de données de test qui est indépendant du modèle que l'on entraîne. Or, si nous faisons la sélection des variables explicatives, sur l'ensemble de notre jeu de données, cette indépendance ne sera pas respectée puisque le modèle sera basé sur des variables explicatives qui ont été sélectionnées partiellement à partir du jeu de test. 
+Nous faisons l'analyse des composantes principales en premier étant donné que si nous avons deux variables fortement corrélées (linéairement) entre elles, le niveau d'importance de l'effet sur la variable réponse de ces variables sera, d'une certaine manière, dilué aux travers les variables corrélées. L'impact de ceci est que plusieurs variables qui sont corrélées fortement ensemble peuvent sembler moins importantes que si nous avions conservé qu'une seule variable.
+
+- Analyse des composantes principales
+
+Nous faisons, donc, une anlyse des composantes principales avec la fonction `PCA` de la librairie `FactoMineR`. Celle-ci standardise, par défaut, nos variables. L'objectif de cette analyse des composantes principales est de faire une première sélection des variables pas trop sévère et, surtout, retirer certaines variables fortement linéairement corrélées.
+
+Nous pouvons, toutefois, regarder le nombre de composantes nécessaire pour expliquer 90% de la variabilité de nos données. On observe dans le graphique suivant qu'il faudrait les 18 premières composantes.
+
+```{r}
+
+
+# Afficher la variance cumulée expliquée par composante
+graph_pca_var_cum(pca, threshold = 0.9)
+
+
+```
+
+Si nous utilisons plutôt la règle de Cattell, pour faire cette sélection, on obtiendrait une valeur quelques peu supérieur, soit un peu au dessus de 20.
+
+```{r}
+
+
+# Afficher le graphique pour appliquer la règle de Cattell
+graph_cattell(pca)
+
+
+```
+
+Nous allons afficher les deux premières composantes avec la variable de débit (qui n'a pas été inclut dans cette analyse des composantes principales).
+
+```{r}
+
+
+# Afficher les deux premières composantes
+graph_pca(pca)
+
+
+```
 
 - Forêt aléatoire 
+
+Il est à noter que cette étape se fait sur le jeu d'entraînement seulement. En effet, comme il est mentionné, dans _Element of Statistical Learning_ (_ELS_)^[The elements of statistical learning : data mining, inference, and prediction, p. 245], l'objectif, dans une stratégie de validation, est d'avoir un jeu de données de test qui est indépendant du modèle que l'on entraîne. Or, si nous faisons la sélection des variables explicatives, sur l'ensemble de notre jeu de données, cette indépendance ne sera pas respectée puisque le modèle sera basé sur des variables explicatives qui ont été sélectionnées partiellement à partir du jeu de test. 
 
 La forêt aléatoire entraînée pour la préselection a été construite à partir de la librairie R _ranger_ (pour avoir de détails sur la méthodologie, se réfèrer à l'annexe). L'importance des variables est obtenu à partir de la permutation des variables explicatives du jeu de données _Out of the Bag_ (OOB). Comme décrit dans _ELS_^[The elements of statistical learning : data mining, inference, and prediction, p. 593], l'idée générale est que, pour chaque arbre, nous avons un jeu de donnée laissé à part (OOB) que nous utilisons pour calculer, pour chaque variable explicatives, l'augmentation de l'erreur ou la diminution de l'exactitude entre les prédictions du jeu de données non-modifié et celles du jeu de données où nous permutons les valeurs de la variable évaluée. À chaque itération, en venant calculer l'impact sur un jeu de données indépendant des données vues par l'arbre entraîné, nous avons un portrait adéquat des variables importantes en généralisation, et non, importantes pour entraîner le modèle. Dans la librairie _ranger_, l'importance des variables est calculé à partir de la méthode décrite dans l'article _A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif_^[Janitza, S., Celik, E. & Boulesteix, A.-L., (2015). A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif doi: 10.1007/s116340160276- 4].
 

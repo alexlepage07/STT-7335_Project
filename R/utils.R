@@ -175,12 +175,14 @@ translate_var <- function(vars) {
       riv_tc = "Volume de la rivière (en millier m\U00B3)",
       ria_ha = "Aire de la rivière (en hectares)",
       wet_cl = "Classification des zones humides",
-      pre_mm = "Précipitations printanières moyennes (en mm) : ",
-      wet_pc = "Proportion occupée par la classe de terres humides : ",
+      pre_mm = "Précipitations printanières moyennes (en mm)",
+      wet_pc = "Proportion occupée par la classe de terres humides",
       prm_pc = "Proportion de terre faisant partie du pergélisol (sol gelé en permanence)",
       gwt_cm = "Profondeur des nappes phréatiques (en cm)",
       slp_dg = "Inclinaison du terrain (en degrés)",
-      lit_cl = "Classes lithologiques (type de roches)"
+      lit_cl = "Classes lithologiques (type de roches)",
+      snw_pc = "Couverture de neige",
+      hdi_ix = "Indice de développement humain"
    )
    
    translation <- vapply(
@@ -195,10 +197,10 @@ translate_var <- function(vars) {
       character(1L)
    ) %>% unname()
    
-   translation <- fifelse(
-      substr(vars, 1, 6) %in% c("wet_pc", "pre_mm"),
-      paste0(translation, substr(vars, nchar(vars) - 1, nchar(vars))),
-      translation
+   translation <- paste0(
+      translation, 
+      " : ",
+      substr(vars, nchar(vars) - 2, nchar(vars))
    )
    
    translation
@@ -326,8 +328,8 @@ show_imp_var <- function(mod_obj, nb_var = 10) {
             x = var_imp,
             y = factor(
                translate_var(names(var_imp)), 
-               levels = unique(translate_var(names(var_imp)))
-            ), 
+               levels = translate_var(names(var_imp))
+            )
          ),
          stat = "identity",
          orientation = "y"
@@ -343,3 +345,146 @@ show_imp_var <- function(mod_obj, nb_var = 10) {
    
 }
 
+# Fonction pour exposer la variance expliquée cumulée des composantes (en %)
+
+graph_pca_var_cum <- function(pca, threshold = 0.8) {
+   
+   eig <-  pca$eig
+   nm <- as.numeric(gsub("comp ", "", rownames(eig)))
+   var <- as.numeric(eig[, 3])
+   
+   ggplot() +
+      geom_bar(
+         mapping = aes(
+            x = nm[1:length(var)],
+            y = var
+         ) ,
+         stat = "identity"
+      ) +
+      geom_hline(
+         yintercept = ifelse(threshold < 1, threshold * 100, threshold), 
+         linetype = "dashed", 
+         color = "red"
+      ) +
+      labs(
+         x = "Composante",
+         y = "Variance expliquée cumulée (en %)"
+      ) + 
+      theme(
+         text = element_text(family = "Times New Roman")
+      )
+   
+   
+}
+
+# Fonction pour utiliser la règle de Cattell (PCA)
+
+graph_cattell <- function(pca) {
+   
+   eig <-  pca$eig
+   nm <- as.numeric(gsub("comp ", "", rownames(eig)))
+   var <- as.numeric(eig[, 1])
+   
+   ggplot() +
+      geom_point(
+         mapping = aes(
+            x = nm[1:length(var)],
+            y = var
+         )
+      ) +
+      labs(
+         x = "Composante",
+         y = "Valeurs propres"
+      ) + 
+      theme(
+         text = element_text(family = "Times New Roman")
+      )
+   
+}
+
+# Fonction pour afficher deux composantes principales
+
+graph_pca <- function(pca, components = c(1, 2), nb_var = nrow(pca$var$coord)) {
+   
+   stopifnot(length(components) == 2)
+   
+   w1 <- which(pca$var$contrib[, components[1]] %in% sort(pca$var$contrib[, components[1]], decreasing = TRUE)[1:nb_var])
+   w2 <- which(pca$var$contrib[, components[2]] %in% sort(pca$var$contrib[, components[2]], decreasing = TRUE)[1:nb_var])
+   
+   dt <- data.table(
+      c1 = pca$var$coord[, components[1]][w1],
+      c2 = pca$var$coord[, components[2]][w2],
+      nm = rownames(pca$var$coord)[w1]
+   )
+   
+   dt_supp <- data.table(
+      c1 = pca$quanti.sup$coord[, components[1]],
+      c2 = pca$quanti.sup$coord[, components[2]],
+      nm = rownames(pca$quanti.sup$coord)
+   )
+   
+   tt <- seq(0, 2*pi, length.out = 100)
+   circle <- data.table(x = cos(tt), y = sin(tt))
+   
+   ggplot()  +
+      geom_segment(
+         data = dt, 
+         mapping = aes(
+            x = 0, 
+            y = 0, 
+            xend = c1, 
+            yend = c2
+         )
+      ) +
+      geom_segment(
+         data = dt_supp, 
+         mapping = aes(
+            x = 0, 
+            y = 0, 
+            xend = c1, 
+            yend = c2,
+            color = "Débit"
+         )
+      ) +
+   geom_polygon(
+      data = circle, 
+      mapping = aes(
+         x = x, 
+         y = y
+      ), 
+      alpha = 0.1
+   ) +
+      geom_text(
+         data = dt, 
+         mapping = aes(
+            x = c1, 
+            y = c2, 
+            label = nm
+         ),  
+         hjust = "left", 
+         vjust = "middle", 
+         size = 3,
+         family = "Times New Roman"
+      ) +
+      geom_text(
+         data = dt_supp, 
+         mapping = aes(
+            x = c1, 
+            y = c2, 
+            label = nm,
+            color = "Débit"
+         ),  
+         hjust = "right", 
+         vjust = "middle", 
+         size = 3,
+         family = "Times New Roman"
+      ) +
+      labs(
+         x = paste0("Composante ", components[1]),
+         y = paste0("Composante ", components[2]),
+         color = ""
+      ) +
+      xlim(c(-1.2, 1.2)) +
+      ylim(c(-1.2, 1.2)) 
+   
+}

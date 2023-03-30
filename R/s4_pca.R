@@ -15,44 +15,77 @@
 #  - Ouedraogo, Angelo
 #  - Pellerin, Jocelyn
 
-# Développeur: Amélie Helaiem (AMHEL3@ulaval.ca)
+# Développeur: Amélie Helaiem (AMHEL3@ulaval.ca) et Andréa Hangsin 
+# (andrea.hangsin.1@ulaval.ca)
 
+
+# Fonctions --------------------------------------------------------------------
+
+
+source("./R/utils.R")
+
+
+# Librairies -------------------------------------------------------------------
+
+
+libs <- c("FactoMineR")
+
+inst_load_packages(libs)
 
 
 # Chemins d'accès --------------------------------------------------------------
 
-input_path <- "../Data/s2_donnees_sol_pc_imputees.rds"
+
+input_path <- "Data/s2_donnees_imputees.rds"
+output_path_obj <- "inst/s4_pca.rds"
+
 
 # Charger les données ----------------------------------------------------------
 
+
 river_dt <- as.data.table(base::readRDS(input_path))
+
 
 # Préparation du jeu de données ------------------------------------------------
 
 
-# On retire les variables qui ne sont pas numériques (on ne peut pas faire de PCA dessus)
-# On pourrait aussi peut-être les transformer en variables numériques
-col_cl <- c("glc_cl_cmj", "wet_cl_cmj", "fmh_cl_cmj", "lit_cl_cmj")
+# On retire les variables catégoriques, les variables d'ID's et la variable 
+# réponse
 
-# On retire aussi les colonnes avec des valeurs manquantes (-999) car elles peuvent biaiser
-# la sélection de variables
-sapply(river_dt, function(x) sum(x == -999))
-col_na = c("snd_pc_uav", "cly_pc_uav", "slt_pc_uav", "soc_th_cav", "soc_th_uav")
+cat_var <- c("glc_cl_cmj", 
+            "wet_cl_cmj", 
+            "fmh_cl_cmj", 
+            "lit_cl_cmj")
 
-# Contient les variables retirées de façon temporaire
-river_temp <- subset(river_dt, select = col_cl) 
-river_temp2 <- subset(river_dt, select = col_na)
+id_var <- c("HYRIV_ID",
+            "NEXT_DOWN",
+            "MAIN_RIV",
+            "LENGTH_KM")
 
-river_dt[,c(col_cl, col_na)] <- list(NULL)
+river_dt[, c(cat_var, id_var)] <- list(NULL)
 
-# On retire la variable cible (dis_m3_pyr)
-river_dt2 = subset(river_dt, select = -dis_m3_pyr)
 
 # PCA --------------------------------------------------------------------------
 
+w <- which(names(river_dt) == "dis_m3_pyr")
+
 # Réalisation du PCA
-comp.pr <- prcomp(river_dt2, scale = T)
+pca <- PCA(X = river_dt, 
+           quanti.sup = w)
+
+
+
   
+
+
+# Sauvegarder l'objet résultant ------------------------------------------------
+
+
+saveRDS(pca, output_path_obj)
+
+
+
+# Old --------------------------------------------------------------------------
 
 # Calcul de la variance expliquée par chaque composante principale
 comp.pr.var <- comp.pr$sdev^2

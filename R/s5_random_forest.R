@@ -19,9 +19,12 @@
 
 # Fonctions --------------------------------------------------------------------
 
+
 source("./R/utils.R")
 
+
 # Librairies -------------------------------------------------------------------
+
 
 libs <- c("data.table",
           "ranger",
@@ -30,24 +33,32 @@ libs <- c("data.table",
 
 inst_load_packages(libs)
 
+
 # Chemins d'accès --------------------------------------------------------------
+
 
 input_path <- "Data/s2_donnees_imputees.rds"
 output_path_model <- "inst/s5_random_forest.rds"
 output_path_graph <- "inst/s5_"
 
+
 # Charger le jeu de données ----------------------------------------------------
+
 
 river_dt <- readRDS(input_path)
 stopifnot("data.table" %in% class(river_dt))
 
+
 # Séparer le jeu ---------------------------------------------------------------
+
 
 split_dt <- initial_split(river_dt, prop = 0.8)
 train_dt <- training(split_dt)
 test_dt  <- testing(split_dt)
 
+
 # Sélection des hyperparamètres ------------------------------------------------
+
 
 # Initaliser le germe
 set.seed(7335)
@@ -117,7 +128,7 @@ final_model <-
    final_fit %>%
    extract_fit_parsnip()
 
-# Sauvegarder les données résultantes ------------------------------------------
+# Sauvegarder le modèle résultant ----------------------------------------------
 
 
 saveRDS(final_model, output_path_model, compress = "xz")
