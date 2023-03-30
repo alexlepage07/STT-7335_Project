@@ -121,7 +121,7 @@ On affiche de nouveau ce graphique :
 
 
 # Afficher les deux premières composantes
-graph_pca(pca2, nb_var = 10)
+graph_pca(pca2)
 
 
 ```
