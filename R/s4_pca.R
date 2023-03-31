@@ -50,10 +50,11 @@ river_dt <- as.data.table(base::readRDS(input_path))
 
 # Préparation du jeu de données ------------------------------------------------
 
+# Pour éviter les modifications par référence
+ini_dt <- copy(river_dt)
 
 # On retire les variables catégoriques, les variables d'ID's et la variable 
 # réponse
-
 cat_var <- c("glc_cl_cmj", 
             "wet_cl_cmj", 
             "fmh_cl_cmj", 
@@ -65,6 +66,10 @@ id_var <- c("HYRIV_ID",
             "LENGTH_KM")
 
 river_dt[, c(cat_var, id_var)] <- list(NULL)
+
+# On normalise la variable de débit
+river_dt$dis_m3_pyr <- 
+  (river_dt$dis_m3_pyr - mean(river_dt$dis_m3_pyr)) / sd(river_dt$dis_m3_pyr)
 
 
 # PCA  #1 ----------------------------------------------------------------------
@@ -84,22 +89,28 @@ saveRDS(pca, output_path_pca1)
 
 # Modification des données -----------------------------------------------------
 
+rem_dupl_var <- function(dt) {
+  
+  nm <- names(dt)
+  nm_dt <- data.table(
+    ini = nm,
+    pre = substr(nm, 1, 6)
+  )
+  
+  nm_dt[, remove := rowid(pre) > 1 & substr(ini, 9, 9) != "0"]
+  
+  dt[, nm_dt[remove == TRUE]$ini] <- NULL
+  
+}
 
-nm <- names(river_dt)
-nm_dt <- data.table(
-  ini = nm,
-  pre = substr(nm, 1, 6)
-)
-
-nm_dt[, remove := rowid(pre) > 1 & substr(ini, 9, 9) != "0"]
-
-river_dt[, nm_dt[remove == TRUE]$ini] <- NULL
+rem_dupl_var(ini_dt)
+rem_dupl_var(river_dt)
 
 
 # Sauvegarder les données résultantes ------------------------------------------
 
 
-saveRDS(river_dt, output_path, compress = "xz")
+saveRDS(ini_dt, output_path, compress = "xz")
 
 
 # PCA #2 -----------------------------------------------------------------------

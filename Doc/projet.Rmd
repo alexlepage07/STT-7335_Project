@@ -72,7 +72,7 @@ Doit se faire sur la jeu de données d'entraînement (voir p.245 ESL)
 
 Pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Les détails expliquant le choix de ce type de modèle se trouve dans la section suivante. Toutefois, une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. Pour ce faire, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et nous défaire de la multicolinéarité. Par la suite, nous entraînons une forêt aléatoire pour faire une sélection basée sur l'importance des variables.
 
-Nous faisons l'analyse des composantes principales en premier étant donné que si nous avons deux variables fortement corrélées (linéairement) entre elles, le niveau d'importance de l'effet sur la variable réponse de ces variables sera, d'une certaine manière, dilué aux travers les variables corrélées. L'impact de ceci est que plusieurs variables qui sont corrélées fortement ensemble peuvent sembler moins importantes que si nous avions conservé qu'une seule variable.
+Nous faisons l'analyse des composantes principales en premier étant donné que si nous avons deux variables fortement corrélées (linéairement) entre elles, le niveau d'importance de l'effet sur la variable réponse de ces variables sera, d'une certaine manière, dilué aux travers les variables corrélées. L'impact de ceci est que plusieurs variables qui sont corrélées fortement ensemble peuvent sembler moins importantes que si nous avions conservé qu'une seule d'entre elles.
 
 - Analyse des composantes principales
 
@@ -106,7 +106,7 @@ Nous allons afficher les deux premières composantes avec la variable de débit 
 
 
 # Afficher les deux premières composantes
-graph_pca(pca1)
+graph_pca(pca1, nb_var = 10)
 
 
 ```
@@ -121,7 +121,7 @@ On affiche de nouveau ce graphique :
 
 
 # Afficher les deux premières composantes
-graph_pca(pca2)
+graph_pca(pca2, nb_var = 10)
 
 
 ```
