@@ -65,14 +65,23 @@ source(file.path(path_fct, "utils.R"))
 Doit se faire sur la jeu de données d'entraînement (voir p.245 ESL)
 - Création de nouvelles variables
 - Identification de la dépendance
-- Pré-sélection de variables
+
+# Modélisation et validation (1-2 pages)
+
+- Pertinence du modèle
+- Choix des hyperparamètres + stratégie de validation
 - Identification d'interactions possibles
+- Pré-sélection de variables
+
+## Pertinence du modèle
+
+## Choix des hyperparamètres 
+
+## Stratégie de validation
 
 ## Préselection de variables 
 
-Pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Les détails expliquant le choix de ce type de modèle se trouve dans la section suivante. Toutefois, une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. Pour ce faire, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et nous défaire de la multicolinéarité. Par la suite, nous entraînons une forêt aléatoire pour faire une sélection basée sur l'importance des variables.
-
-Nous faisons l'analyse des composantes principales en premier étant donné que si nous avons deux variables fortement corrélées (linéairement) entre elles, le niveau d'importance de l'effet sur la variable réponse de ces variables sera, d'une certaine manière, dilué aux travers les variables corrélées. L'impact de ceci est que plusieurs variables qui sont corrélées fortement ensemble peuvent sembler moins importantes que si nous avions conservé qu'une seule d'entre elles.
+Comme mentionné pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. Pour ce faire, nous entraînons une forêt aléatoire pour faire une sélection basée sur l'importance des variables. Par la suite, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et nous défaire de la multicolinéarité. Nous allons finalement faire une modélisation avec régularisation, soit celle de type Lasso, pour finaliser cette sélection de variables. Nous passerons, ensuite, à la dernière étape qui est de modélisé avec un modèle mixte avec les variables finales obtenues avec la régression Lasso.
 
 - Analyse des composantes principales
 
@@ -151,10 +160,6 @@ Les trois variables qui ont le plus d'importance selon ce modèle et cette méth
 
 Pour sélectionner les variables, plusieurs options s'offrent à nous. Nous pouvons sélectionner soient un nombre fixé de variables explicatives. Également, nous pourrions couper à partir d'un certain seuil d'importance de variable. 
 
-# Modélisation et validation (1-2 pages)
-
-- Pertinence du modèle
-- Choix des hyperparamètres + stratégie de validation
 - Choix des métriques
 
 # Analyse, discussion et conclusion (2-3 pages)

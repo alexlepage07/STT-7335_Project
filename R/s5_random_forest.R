@@ -51,7 +51,7 @@ stopifnot("data.table" %in% class(river_dt))
 
 # Séparer le jeu ---------------------------------------------------------------
 
-
+set.seed(7335)
 split_dt <- initial_split(river_dt, prop = 0.8)
 train_dt <- training(split_dt)
 test_dt  <- testing(split_dt)
