@@ -419,7 +419,7 @@ graph_pca <- function(pca, components = c(1, 2), nb_var = nrow(pca$var$coord)) {
       nm = rownames(pca$quanti.sup$coord)
    )
    
-   tt <- seq(0, 2*pi, length.out = 100)
+   tt <- seq(0, 2*pi, length.out = 1000)
    circle <- data.table(x = cos(tt), y = sin(tt))
    
    ggplot()  +
@@ -474,6 +474,7 @@ graph_pca <- function(pca, components = c(1, 2), nb_var = nrow(pca$var$coord)) {
          vjust = "middle", 
          size = 3,
          family = "Times New Roman"
+         
       ) +
       labs(
          x = paste0("Composante ", components[1]),
@@ -481,7 +482,9 @@ graph_pca <- function(pca, components = c(1, 2), nb_var = nrow(pca$var$coord)) {
          color = ""
       ) +
       xlim(c(-1.2, 1.2)) +
-      ylim(c(-1.2, 1.2)) 
+      ylim(c(-1.2, 1.2)) + 
+      theme(legend.position = "none")
+   
    
 }
 
