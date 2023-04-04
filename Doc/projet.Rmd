@@ -28,8 +28,7 @@ path_fct <- "../R"
 
 
 rf_model <- readRDS(file.path(path_obj, "s5_random_forest.rds"))
-pca1 <- readRDS(file.path(path_obj, "s4_pca1.rds"))
-pca2 <- readRDS(file.path(path_obj, "s4_pca2.rds"))
+pca <- readRDS(file.path(path_obj, "s6_pca.rds"))
 
 
 # Charger les fonctions utiles -------------------------------------------------
@@ -118,7 +117,7 @@ Pour sélectionner les variables, plusieurs options s'offrent à nous. Nous pouv
 
 - Analyse des composantes principales
 
-Nous faisons, donc, une analyse des composantes principales avec la fonction `PCA` de la librairie `FactoMineR`. Celle-ci standardise, par défaut, nos variables. L'objectif de cette analyse des composantes principales est de faire une première sélection des variables pas trop sévère et, surtout, retirer certaines variables fortement linéairement corrélées.
+Nous faisons, donc, une analyse des composantes principales avec la fonction `PCA` de la librairie `FactoMineR`. Celle-ci standardise, par défaut, nos variables. <span style="color:red"> Pourquoi on a nous-même standardisée? </span> L'objectif de cette analyse des composantes principales est d'orthogonaliser nos variables .
 
 Nous pouvons, toutefois, regarder le nombre de composantes nécessaire pour expliquer 90% de la variabilité de nos données. On observe dans le graphique suivant qu'il faudrait les 18 premières composantes.
 
@@ -126,7 +125,7 @@ Nous pouvons, toutefois, regarder le nombre de composantes nécessaire pour expl
 
 
 # Afficher la variance cumulée expliquée par composante
-graph_pca_var_cum(pca1, threshold = 0.9)
+graph_pca_var_cum(pca, threshold = 0.9)
 
 
 ```
@@ -137,7 +136,7 @@ Si nous utilisons plutôt la règle de Cattell, pour faire cette sélection, on 
 
 
 # Afficher le graphique pour appliquer la règle de Cattell
-graph_cattell(pca1)
+graph_cattell(pca)
 
 
 ```
@@ -148,25 +147,14 @@ Nous allons afficher les deux premières composantes avec la variable de débit 
 
 
 # Afficher les deux premières composantes
-graph_pca(pca1, nb_var = 10)
+graph_pca(pca, nb_var = 10)
 
 
 ```
 
-<span style="color:red">Ajouter un tableau avec les corrélations.</span>
-
-Nous remarquons à partir de ce graphique que nous avons beaucoup de variable en double qui sont grandement corrélée, quasi parfaitement. Un exemple est la variable `pre_mm_uyr` et `pre_mm_cyr` qui sont les précipitations printanières moyennes (en mm), respectivement, dans le bassin versant et dans le bassin versant total en amont du point d'écoulement. Nous retirons ces doublons de variables qui ont vraiment peu de différence. Nous réduisons le nombre de variables de notre jeu de données de ~50 à ~35.
-
-On affiche de nouveau ce graphique :
-
-```{r}
 
 
-# Afficher les deux premières composantes
-graph_pca(pca2, nb_var = 10)
 
-
-```
 
 
 
