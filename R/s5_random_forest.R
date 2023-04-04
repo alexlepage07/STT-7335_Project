@@ -131,10 +131,16 @@ final_model <-
 
 # Retrait de variables ---------------------------------------------------------
 
+nb <- 20
 
-vars <- c()
+vars <- names(sort(final_model$fit$variable.importance, decreasing = TRUE)[1:nb])
 
-river_dt <- river_dt[, -vars, with = FALSE]
+river_dt <- river_dt[, c(vars,
+                         "HYRIV_ID",
+                         "NEXT_DOWN",
+                         "MAIN_RIV",
+                         "LENGTH_KM",
+                         "dis_m3_pyr"), with = FALSE]
 
 
 # Sauvegarder les données résultantes ------------------------------------------
