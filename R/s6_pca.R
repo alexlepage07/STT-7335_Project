@@ -91,6 +91,7 @@ res_dt <- cbind(
    as.data.table(pca$ind$coord[, 1:nb_dim])
 )
 
+
 # PCA (plus petite taille) -----------------------------------------------------
 
 
