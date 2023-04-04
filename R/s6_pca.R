@@ -87,7 +87,7 @@ pca <- PCA(X = river_dt,
 nb_dim <- 9
 
 res_dt <- cbind(
-   ini_dt[, c(cat_var, id_var), with = FALSE],
+   ini_dt[, c(cat_var, id_var, "dis_m3_pyr"), with = FALSE],
    as.data.table(pca$ind$coord[, 1:nb_dim])
 )
 
@@ -110,4 +110,5 @@ saveRDS(pca, output_path_obj)
 # Sauvegarder les données résultantes ------------------------------------------
 
 
-readRDS(res_dt, output_path, compress = "xz")
+saveRDS(res_dt, output_path, compress = "xz")
+

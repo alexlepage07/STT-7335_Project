@@ -71,6 +71,7 @@ Doit se faire sur la jeu de données d'entraînement (voir p.245 ESL)
 - Choix des hyperparamètres + stratégie de validation
 - Identification d'interactions possibles
 - Pré-sélection de variables
+- Choix des métriques
 
 ## Pertinence du modèle
 
@@ -206,9 +207,7 @@ graph_pca(pca, components = c(2, 3), nb_var = nb_var)
 
 </div>
 
-
-
-- Choix des métriques
+- Modèle _Lasso_
 
 # Analyse, discussion et conclusion (2-3 pages)
 
