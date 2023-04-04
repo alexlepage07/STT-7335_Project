@@ -170,20 +170,41 @@ graph_cattell(pca)
 **Constats :**
 À partir du graphique ci-dessous qui expose la règle du 80%, on voit qu'il faut pour expliquer 80% de la variabilité de nos données, conserver `r w[1]` premières composantes. Si nous utilisons la règle de _Joliffe_, qui conserve que les composantes ayant des valeurs propres > 0.7, qui est plus sévère que celle de _Kaiser_, il faut conserver les 8 premières composantes principales. Si nous utilisons plutôt la règle de Cattell, pour faire cette sélection, on observe que les valeurs propres semblent se stabiliser à partir de la composante 10. Nous pourrions, donc, garder que les 9 premières composantes. Pour être conservateurs, nous conservons, donc, les 9 premières composantes.
 
-Nous allons afficher les deux premières composantes avec la variable de débit (qui n'a pas été inclut dans cette analyse des composantes principales).
+Nous allons afficher les trois premières composantes avec la variable de débit (qui n'a pas été inclut dans cette analyse des composantes principales). Celles-ci conservent à elles seules plus de 50% de la variabilité du jeu de données. Nous affichons que les `(nb_var <- 10)` variables qui contribuent le plus à la variabilité de ces composantes.
 
-```{r}
+<div style="display: flex; justify-content: center;">
+
+<div style="padding-right: 80px;">
+
+**Composantes #1 et #2**
+
+```{r, fig.height=6, fig.width=6, fig.align="c"}
 
 
-# Afficher les deux premières composantes
-graph_pca(pca, nb_var = 10)
+# Afficher la composante #1 et #2
+graph_pca(pca, nb_var = nb_var)
 
 
 ```
 
+</div>
+
+<div style="padding-right: 80px;">
+
+**Composantes #2 et #3**
+
+```{r, fig.height=6, fig.width=6, fig.align="c"}
 
 
+# Afficher la composante #2 et #3
+graph_pca(pca, components = c(2, 3), nb_var = nb_var)
 
+
+```
+
+</div>
+
+</div>
 
 
 

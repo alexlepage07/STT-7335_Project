@@ -49,15 +49,14 @@ river_dt <- as.data.table(base::readRDS(input_path))
 
 # Préparation du jeu de données ------------------------------------------------
 
+
 # Pour éviter les modifications par référence
 ini_dt <- copy(river_dt)
 
 # On retire les variables catégoriques, les variables d'ID's et la variable 
 # réponse
-cat_var <- c("glc_cl_cmj", 
-             "wet_cl_cmj", 
-             "fmh_cl_cmj", 
-             "lit_cl_cmj")
+cat_var <- sapply(river_dt, function(x) !is.numeric(x))
+cat_var <- names(cat_var)[which(cat_var)]
 
 id_var <- c("HYRIV_ID",
             "NEXT_DOWN",
@@ -73,11 +72,32 @@ river_dt$dis_m3_pyr <-
 
 # PCA --------------------------------------------------------------------------
 
+
 w <- which(names(river_dt) == "dis_m3_pyr")
 
 # Réalisation du PCA
 pca <- PCA(X = river_dt, 
-           quanti.sup = w)
+           quanti.sup = w, 
+           ncp = ncol(river_dt) - 1)
+
+
+# Création du nouveau jeu de données -------------------------------------------
+
+
+nb_dim <- 9
+
+res_dt <- cbind(
+   ini_dt[, c(cat_var, id_var), with = FALSE],
+   as.data.table(pca$ind$coord[, 1:nb_dim])
+)
+
+# PCA (plus petite taille) -----------------------------------------------------
+
+
+# Réalisation du PCA
+pca <- PCA(X = river_dt, 
+           quanti.sup = w, 
+           ncp = 4)
 
 
 # Sauvegarder l'objet résultant ------------------------------------------------
@@ -89,4 +109,4 @@ saveRDS(pca, output_path_obj)
 # Sauvegarder les données résultantes ------------------------------------------
 
 
-saveRDS(river_dt, output_path, compress = "xz")
+readRDS(res_dt, output_path, compress = "xz")
