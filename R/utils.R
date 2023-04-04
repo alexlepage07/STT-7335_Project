@@ -44,7 +44,8 @@ libs <- c("data.table",
          "ggplot2",
          "terra",
          "tidyverse",
-         "utils")
+         "utils",
+         "kableExtra")
 
 inst_load_packages(libs)
 
@@ -529,5 +530,23 @@ graph_matrix_corr <- function(dt, ind = FALSE, threshold = 0.9) {
          axis.text.x = element_text(angle = 35, vjust = 0.65)
       )
    
+   
+}
+
+apply_joliffe_rule <- function(pca) {
+   
+   eig_dt <- as.data.table(pca$eig[, 1], keep.rownames = TRUE)
+   names(eig_dt) <- c("comp", "eig")
+   
+   eig_dt[eig > 0.7] %>% 
+      knitr::kable(
+         col.names = c("Composantes", "Valeurs propres"), 
+         digits = 2,
+         align = rep("c", 2)
+      ) %>% 
+      kableExtra::kable_classic(
+         full_width = FALSE, 
+         html_font = "Cambria"
+      )
    
 }
