@@ -36,10 +36,9 @@ inst_load_packages(libs)
 # Chemins d'accès --------------------------------------------------------------
 
 
-input_path <- "Data/s2_donnees_imputees.rds"
-output_path <- "Data/s4_donnees_var_retirees.rds"
-output_path_pca1 <- "inst/s4_pca1.rds"
-output_path_pca2 <- "inst/s4_pca2.rds"
+input_path <- "Data/s5_donnees_rf_var_sel.rds"
+output_path <- "Data/s6_donnees_orthogonalisees.rds"
+output_path_obj <- "inst/s6_pca.rds"
 
 
 # Charger les données ----------------------------------------------------------
@@ -56,9 +55,9 @@ ini_dt <- copy(river_dt)
 # On retire les variables catégoriques, les variables d'ID's et la variable 
 # réponse
 cat_var <- c("glc_cl_cmj", 
-            "wet_cl_cmj", 
-            "fmh_cl_cmj", 
-            "lit_cl_cmj")
+             "wet_cl_cmj", 
+             "fmh_cl_cmj", 
+             "lit_cl_cmj")
 
 id_var <- c("HYRIV_ID",
             "NEXT_DOWN",
@@ -72,7 +71,7 @@ river_dt$dis_m3_pyr <-
   (river_dt$dis_m3_pyr - mean(river_dt$dis_m3_pyr)) / sd(river_dt$dis_m3_pyr)
 
 
-# PCA  #1 ----------------------------------------------------------------------
+# PCA --------------------------------------------------------------------------
 
 w <- which(names(river_dt) == "dis_m3_pyr")
 
@@ -84,90 +83,10 @@ pca <- PCA(X = river_dt,
 # Sauvegarder l'objet résultant ------------------------------------------------
 
 
-saveRDS(pca, output_path_pca1)
-
-
-# Modification des données -----------------------------------------------------
-
-rem_dupl_var <- function(dt) {
-  
-  nm <- names(dt)
-  nm_dt <- data.table(
-    ini = nm,
-    pre = substr(nm, 1, 6)
-  )
-  
-  nm_dt[, remove := rowid(pre) > 1 & substr(ini, 9, 9) != "0"]
-  
-  dt[, nm_dt[remove == TRUE]$ini] <- NULL
-  
-}
-
-rem_dupl_var(ini_dt)
-rem_dupl_var(river_dt)
+saveRDS(pca, output_path_obj)
 
 
 # Sauvegarder les données résultantes ------------------------------------------
 
 
-saveRDS(ini_dt, output_path, compress = "xz")
-
-
-# PCA #2 -----------------------------------------------------------------------
-
-w <- which(names(river_dt) == "dis_m3_pyr")
-
-# Réalisation du PCA
-pca <- PCA(X = river_dt, 
-           quanti.sup = w)
-
-
-# Sauvegarder l'objet résultant ------------------------------------------------
-
-
-saveRDS(pca, output_path_pca2)
-
-
-# Old --------------------------------------------------------------------------
-
-# Calcul de la variance expliquée par chaque composante principale
-comp.pr.var <- comp.pr$sdev^2
-
-# Calcul de la proportion de variance expliquée
-prop.var <- comp.pr.var/sum(comp.pr.var)
-prop.var
-
-
-# Visualisation graphique ------------------------------------------------------
-
-# Proportion de variance expliquée par chaque composante principale
-
-plot (prop.var , xlab = " Composante principale ",
-       ylab = " Proportion de variance expliquée", ylim = c(0 , 1) ,
-       type = "b", col = "blue")
-
-grid(nx = NA, ny = NULL,
-     lty = 1, col = "gray", lwd = 1)
-
-# Proportion de variance expliquée cumulative
-plot(cumsum(prop.var), xlab = "Composante principale", ylab = " Proportion de variance expliquée (Cumulative)", col = "blue", type = "o")
-
-grid(nx = NA, ny = NULL,
-     lty = 1, col = "gray", lwd = 1)
-
-# 90% de variance expliquée par les 19 premières composantes principales
-abline(h = 0.9, col = "red", lty = 2)
-
-
-# Sélection de variables -------------------------------------------------------
-
-# On garde les premières composantes principales qui expliquent plus de 90% de la variabilité
-nombre.comp = which(cumsum(prop.var) > 0.9)[1] 
-river_pca = comp.pr$x[,1:nombre.comp]
-
-# Rajout des variables retirées précédemment
-river_pca = cbind(river_pca, river_temp, river_temp2)
-
-# On rajoute la variable réponse
-river_pca = cbind(river_pca, river_dt$dis_m3_pyr)
-names(river_pca)[names(river_pca) == 'V2'] <- 'dis_m3_pyr'
+saveRDS(river_dt, output_path, compress = "xz")

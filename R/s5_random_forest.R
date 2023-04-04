@@ -37,9 +37,9 @@ inst_load_packages(libs)
 # Chemins d'accès --------------------------------------------------------------
 
 
-input_path <- "Data/s2_donnees_imputees.rds"
-output_path_model <- "inst/s5_random_forest.rds"
-output_path_graph <- "inst/s5_"
+input_path <- "Data/s4_donnees_sans_multicol.rds"
+output_path <- "Data/s5_donnees_rf_var_sel.rds"
+output_path_obj <- "inst/s5_random_forest.rds"
 
 
 # Charger le jeu de données ----------------------------------------------------
@@ -50,6 +50,7 @@ stopifnot("data.table" %in% class(river_dt))
 
 
 # Séparer le jeu ---------------------------------------------------------------
+
 
 set.seed(7335)
 split_dt <- initial_split(river_dt, prop = 0.8)
@@ -128,9 +129,25 @@ final_model <-
    final_fit %>%
    extract_fit_parsnip()
 
+# Retrait de variables ---------------------------------------------------------
+
+
+vars <- c()
+
+river_dt <- river_dt[, -vars, with = FALSE]
+
+
+# Sauvegarder les données résultantes ------------------------------------------
+
+
+saveRDS(river_dt, output_path, compress = "xz")
+
+
 # Sauvegarder le modèle résultant ----------------------------------------------
 
 
 saveRDS(final_model, output_path_model, compress = "xz")
+
+
 
 

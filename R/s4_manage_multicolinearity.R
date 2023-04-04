@@ -35,7 +35,7 @@ inst_load_packages(libs)
 
 
 input_path <- "Data/s3_donnees_standardisees.rds"
-output_path <- "Data/s4_donnees_non_redondantes.rds"
+output_path <- "Data/s4_donnees_sans_multicol.rds"
 
 
 # Charger le jeu de données ----------------------------------------------------
