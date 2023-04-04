@@ -488,3 +488,51 @@ graph_pca <- function(pca, components = c(1, 2), nb_var = nrow(pca$var$coord)) {
       ylim(c(-1.2, 1.2)) 
    
 }
+
+# Fonction pour établir la matrice de corrélation
+
+calc_matrix_cor <- function(dt, remove_dupl = FALSE) {
+   
+   stopifnot(is.data.table(dt))
+   
+   vars <- vapply(
+      X = dt, 
+      FUN = is.numeric, 
+      FUN.VALUE = is.logical(1L)
+   )
+   cor_mat <- cor(dt[, names(vars)[which(vars)], with = FALSE]) %>% round(digits = 3)
+   cor_mat <- as.data.table(melt(cor_mat) %>%  suppressWarnings())
+   
+   if (remove_dupl) {
+      
+      cor_mat[, var1_var2 := apply(cor_mat[, .(Var1, Var2)], 1, function(x) paste(sort(x), collapse = ""))]
+      cor_mat <- cor_mat[rowid(var1_var2) == 1]
+      cor_mat[, var1_var2 := NULL]
+      
+   }
+   
+   cor_mat
+   
+}
+
+graph_matrix_corr <- function(dt, ind = FALSE, threshold = 0.9) {
+   
+   stopifnot(is.data.table(dt))
+   
+   cor_mat <- calc_matrix_cor(dt)
+   
+   if (ind) {
+      cor_mat[, value := abs(value) > threshold]
+   }
+   
+   ggplot(
+      data = cor_mat, 
+      mapping = aes(x = Var1, y = Var2, fill = value)
+   ) + 
+      geom_tile() +
+      theme(
+         axis.text.x = element_text(angle = 35, vjust = 0.65)
+      )
+   
+   
+}

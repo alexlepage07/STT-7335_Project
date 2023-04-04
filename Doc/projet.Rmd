@@ -81,11 +81,44 @@ Doit se faire sur la jeu de données d'entraînement (voir p.245 ESL)
 
 ## Préselection de variables 
 
-Comme mentionné pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. Pour ce faire, nous entraînons une forêt aléatoire pour faire une sélection basée sur l'importance des variables. Par la suite, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et nous défaire de la multicolinéarité. Nous allons finalement faire une modélisation avec régularisation, soit celle de type Lasso, pour finaliser cette sélection de variables. Nous passerons, ensuite, à la dernière étape qui est de modélisé avec un modèle mixte avec les variables finales obtenues avec la régression Lasso.
+Comme mentionné, pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. Pour ce faire, nous entraînons une forêt aléatoire pour faire une sélection basée sur l'importance des variables. Par la suite, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et nous défaire de la multicolinéarité. Nous allons finalement faire une modélisation avec régularisation, soit celle de type _Lasso_, pour finaliser cette sélection de variables. Nous passerons, ensuite, à la dernière étape qui est de modéliser notre variable d'intérêt avec un modèle mixte, et ce, avec les variables finales obtenues avec la régression _Lasso_.
+
+- Multicolinéarité
+
+Avant de faire une présélection des variables à partir de la forêt aléatoire, nous venons retirer les variables qui sont fortement. En effet, l'importance des variables peut être affecté par un contexte de multicolinéarité.<span style="color:red">Référence + développer</span> Dans notre jeu de données, certaines variables sont très corrélées. Nous avons, notamment, des mesures qui ont été prises à différents endroits du bassin versant qui ont pratiquement les mêmes valeurs. Nous avons, également, la situation où nous avons des prises de mesure pour différent mois qui sont quasi-parfaitement corrélés. De ce fait, nous retirons certaines variables pour ne garder qu'une seule de deux qui ont des coefficient de corrélation $\rho_{i, j}>0.95$.
+
+
+
+- Forêt aléatoire 
+
+Il est à noter que cette étape de présélection se fait sur le jeu d'entraînement seulement. En effet, comme il est mentionné, dans _Element of Statistical Learning_ (_ELS_)^[The elements of statistical learning : data mining, inference, and prediction, p. 245], l'objectif, dans une stratégie de validation, est d'avoir un jeu de données de test qui est indépendant du modèle que l'on entraîne. Or, si nous faisons la sélection des variables explicatives, sur l'ensemble de notre jeu de données, cette indépendance ne sera pas respectée puisque le modèle sera basé sur des variables explicatives qui ont été sélectionnées partiellement à partir du jeu de test. 
+
+La forêt aléatoire entraînée pour la préselection a été construite à partir de la librairie R _ranger_ (pour avoir de détails sur la méthodologie, se réfèrer à l'annexe). L'importance des variables est obtenu à partir de la permutation des variables explicatives du jeu de données _Out of the Bag_ (OOB). Comme décrit dans _ELS_^[The elements of statistical learning : data mining, inference, and prediction, p. 593], l'idée générale est que, pour chaque arbre, nous avons un jeu de donnée laissé à part (OOB) que nous utilisons pour calculer, pour chaque variable explicatives, l'augmentation de l'erreur ou la diminution de l'exactitude entre les prédictions du jeu de données non-modifié et celles du jeu de données où nous permutons les valeurs de la variable évaluée. À chaque itération, en venant calculer l'impact sur un jeu de données indépendant des données vues par l'arbre entraîné, nous avons un portrait adéquat des variables importantes en généralisation, et non, importantes pour entraîner le modèle. Dans la librairie _ranger_, l'importance des variables est calculé à partir de la méthode décrite dans l'article _A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif_^[Janitza, S., Celik, E. & Boulesteix, A.-L., (2015). A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif doi: 10.1007/s116340160276- 4]. Mentionner ça : https://stats.stackexchange.com/questions/141619/wont-highly-correlated-variables-in-random-forest-distort-accuracy-and-feature
+
+Il est à noter que même si le modèle entraîné n'était pas bon, nous aurions quand même une importance de variables. De ce fait, avant de faire la sélection des variables, nous allons nous assurer que le modèle construit est un bon modèle.
+
+<span style="color:red">Quelle mesure de performance pour l'importance? Comment l'interpréter? À ajouter pour trouver les limites possibles</span>
+      
+Nous affichons les 15 variables les plus importantes basée sur la méthode précédemment décrite :
+
+```{r}
+
+
+# Afficher les variables importantes
+show_imp_var(rf_model$fit, nb_var = 30)
+
+
+```
+
+**Constats :**
+
+Les trois variables qui ont le plus d'importance selon ce modèle et cette méthode pour calculer l'importance des variables sont liées aux caractéristiques de la rivière. Les deux premières, soient le volume et l'aire de la rivière, sont probablement fortement corrélées. Si c'est le cas, l'analyse des composantes principales pourra gérer cette situation. Par ailleurs, nous voyons que nous avons par deux fois la variable de précipitations printanières moyennes : une fois pour le mois d'avril et une autre fois pour le mois de mars. Encore une fois, il est fort probable que ces deux soient corrélées, situation qui sera géré pas l'analyse des composantes principales.
+
+Pour sélectionner les variables, plusieurs options s'offrent à nous. Nous pouvons sélectionner soient un nombre fixé de variables explicatives. Également, nous pourrions couper à partir d'un certain seuil d'importance de variable. 
 
 - Analyse des composantes principales
 
-Nous faisons, donc, une anlyse des composantes principales avec la fonction `PCA` de la librairie `FactoMineR`. Celle-ci standardise, par défaut, nos variables. L'objectif de cette analyse des composantes principales est de faire une première sélection des variables pas trop sévère et, surtout, retirer certaines variables fortement linéairement corrélées.
+Nous faisons, donc, une analyse des composantes principales avec la fonction `PCA` de la librairie `FactoMineR`. Celle-ci standardise, par défaut, nos variables. L'objectif de cette analyse des composantes principales est de faire une première sélection des variables pas trop sévère et, surtout, retirer certaines variables fortement linéairement corrélées.
 
 Nous pouvons, toutefois, regarder le nombre de composantes nécessaire pour expliquer 90% de la variabilité de nos données. On observe dans le graphique suivant qu'il faudrait les 18 premières composantes.
 
@@ -135,30 +168,7 @@ graph_pca(pca2, nb_var = 10)
 
 ```
 
-- Forêt aléatoire 
 
-Il est à noter que cette étape se fait sur le jeu d'entraînement seulement. En effet, comme il est mentionné, dans _Element of Statistical Learning_ (_ELS_)^[The elements of statistical learning : data mining, inference, and prediction, p. 245], l'objectif, dans une stratégie de validation, est d'avoir un jeu de données de test qui est indépendant du modèle que l'on entraîne. Or, si nous faisons la sélection des variables explicatives, sur l'ensemble de notre jeu de données, cette indépendance ne sera pas respectée puisque le modèle sera basé sur des variables explicatives qui ont été sélectionnées partiellement à partir du jeu de test. 
-
-La forêt aléatoire entraînée pour la préselection a été construite à partir de la librairie R _ranger_ (pour avoir de détails sur la méthodologie, se réfèrer à l'annexe). L'importance des variables est obtenu à partir de la permutation des variables explicatives du jeu de données _Out of the Bag_ (OOB). Comme décrit dans _ELS_^[The elements of statistical learning : data mining, inference, and prediction, p. 593], l'idée générale est que, pour chaque arbre, nous avons un jeu de donnée laissé à part (OOB) que nous utilisons pour calculer, pour chaque variable explicatives, l'augmentation de l'erreur ou la diminution de l'exactitude entre les prédictions du jeu de données non-modifié et celles du jeu de données où nous permutons les valeurs de la variable évaluée. À chaque itération, en venant calculer l'impact sur un jeu de données indépendant des données vues par l'arbre entraîné, nous avons un portrait adéquat des variables importantes en généralisation, et non, importantes pour entraîner le modèle. Dans la librairie _ranger_, l'importance des variables est calculé à partir de la méthode décrite dans l'article _A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif_^[Janitza, S., Celik, E. & Boulesteix, A.-L., (2015). A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif doi: 10.1007/s116340160276- 4].
-
-<span style="color:red">Quelle mesure de performance pour l'importance? Comment l'interpréter? À ajouter pour trouver les limites possibles</span>
-      
-Nous affichons les 15 variables les plus importantes basée sur la méthode précédemment décrite :
-
-```{r}
-
-
-# Afficher les variables importantes
-show_imp_var(rf_model$fit, nb_var = 15)
-
-
-```
-
-**Constats :**
-
-Les trois variables qui ont le plus d'importance selon ce modèle et cette méthode pour calculer l'importance des variables sont liées aux caractéristiques de la rivière. Les deux premières, soient le volume et l'aire de la rivière, sont probablement fortement corrélées. L'analyse des composantes principales pourra nous indiquer si c'est le cas et si nous devons garder les deux. Par ailleurs, nous voyons que nous avons par deux fois la variable de précipitations printanières moyennes : une fois pour le mois d'avril et une autre fois pour le mois de mars. Encore une fois, il est fort probable que ces deux soient corrélées et nous validerons si c'est le cas.
-
-Pour sélectionner les variables, plusieurs options s'offrent à nous. Nous pouvons sélectionner soient un nombre fixé de variables explicatives. Également, nous pourrions couper à partir d'un certain seuil d'importance de variable. 
 
 - Choix des métriques
 
