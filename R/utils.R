@@ -20,17 +20,33 @@
 
 # Librairies -------------------------------------------------------------------
 
+# Fonction pour installer, au besoin, une ou plusieurs librairies, pour ensuite
+# les télécharger
 
-lib <- c("data.table",
+
+inst_load_packages <- function(libs) {
+   
+   # Installer les librairies si elles ne sont pas dans les librairies installées
+   s <- sapply(
+      libs, 
+      function(x) {
+         if (!(x %in% utils::installed.packages())) 
+            install.packages(x)
+      }
+   )
+   
+   # Télécharger les librairies
+   s <- sapply(libs, function(x) do.call(library, list(x)))
+}
+
+
+libs <- c("data.table",
          "ggplot2",
          "terra",
          "tidyverse",
          "utils")
 
-l <- lapply(
-   lib,
-   function(x) {do.call("library", list(x))}
-)
+inst_load_packages(libs)
 
 
 # Fonctions --------------------------------------------------------------------
@@ -206,27 +222,6 @@ translate_var <- function(vars) {
    translation
    
 }
-
-
-# Fonction pour installer, au besoin, une ou plusieurs librairies, pour ensuite
-# les télécharger
-
-
-inst_load_packages <- function(libs) {
-   
-   # Installer les librairies si elles ne sont pas dans les librairies installées
-   s <- sapply(
-      libs, 
-      function(x) {
-         if (!(x %in% utils::installed.packages())) 
-            install.packages(x)
-      }
-   )
-   
-   # Télécharger les librairies
-   s <- sapply(libs, function(x) do.call(library, list(x)))
-}
-
 
 # Fonction pour faire des tests de comparaison de moyenne par patron
 
