@@ -41,11 +41,11 @@ inst_load_packages <- function(libs) {
 
 
 libs <- c("data.table",
-         "ggplot2",
-         "terra",
-         "tidyverse",
-         "utils",
-         "kableExtra")
+          "ggplot2",
+          "terra",
+          "tidyverse",
+          "utils",
+          "kableExtra")
 
 inst_load_packages(libs)
 
@@ -442,14 +442,14 @@ graph_pca <- function(pca, components = c(1, 2), nb_var = nrow(pca$var$coord)) {
             color = "Débit"
          )
       ) +
-   geom_polygon(
-      data = circle, 
-      mapping = aes(
-         x = x, 
-         y = y
-      ), 
-      alpha = 0.1
-   ) +
+      geom_polygon(
+         data = circle, 
+         mapping = aes(
+            x = x, 
+            y = y
+         ), 
+         alpha = 0.1
+      ) +
       geom_text(
          data = dt, 
          mapping = aes(
@@ -553,3 +553,65 @@ apply_joliffe_rule <- function(pca) {
       )
    
 }
+
+
+# Fonction pour créer la droite d'Henry
+
+graph_qqplot <- function(x) {
+   
+   ggplot(
+      mapping = aes(sample = x)
+   ) + 
+      stat_qq() + 
+      stat_qq_line() +
+      labs(title = "Droite d'Henry",
+           x = "Quantiles théoriques",
+           y = "Quantiles observés")
+   
+}
+
+
+# Fonction pour exposer les VIF's
+
+table_vif <- function(vif) {
+   
+   vif[, VIF := round(VIF, 2)]
+   w <- which(vif$VIF > 10)
+   vif[, VIF := as.character(VIF)]
+   vif[w, VIF := cell_spec(vif$VIF[w], color = "red")]
+   
+   kbl(
+      x = vif[order(VIF, decreasing = TRUE)][1:(length(w) + 4), .(Variables, VIF)], 
+      align = "c", 
+      col.names = c("Variables", "VIF"), 
+      digits = 2,
+      booktabs = TRUE, 
+      escape = FALSE
+   ) %>% kable_classic(
+      full_width = FALSE, 
+      html_font = "Cambria"
+   )
+   
+}
+
+table_ind_cond <- function(ind_cond) {
+   
+   w <- which(
+      sapply(
+         X = ind_cond[`Condition Index` > 25][1, ], 
+         FUN = function(x) x > 0.1)
+   )
+   
+   ind_cond[`Condition Index` > 25][1, names(w), with = FALSE] %>% 
+      kbl(
+         align = "c", 
+         digits = 2,
+         booktabs = TRUE, 
+         escape = FALSE
+      ) %>% 
+      kable_classic(
+         full_width = FALSE, 
+         html_font = "Cambria"
+      )
+}
+

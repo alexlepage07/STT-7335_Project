@@ -29,7 +29,8 @@ source("./R/utils.R")
 libs <- c("data.table",
           "ranger",
           "tidymodels",
-          "vip")
+          "vip",
+          "doParallel")
 
 inst_load_packages(libs)
 
@@ -61,9 +62,6 @@ test_dt  <- testing(split_dt)
 # Sélection des hyperparamètres ------------------------------------------------
 
 
-# Initaliser le germe
-set.seed(7335)
-
 # Initialiser notre modèle
 tune_spec <- rand_forest(
    mtry = tune(),
@@ -81,9 +79,9 @@ tune_spec <- rand_forest(
 
 # Établir les combinaisons d'hyperparamètres à tester 
 forest_grid <- grid_regular(
-   mtry(range = c(1L, 15L)),
-   trees(range = c(100L, 500L)),
-   min_n(range = c(100L, 1000L))
+   mtry(range = c(5L)),
+   trees(range = c(250L)),
+   min_n(range = c(500L))
 )
 
 # Séparer notre jeu de données en plis pour la validation croisée
@@ -99,6 +97,8 @@ forest_wf <- workflow() %>%
    )
 
 # Faire la validation croisée
+registerDoParallel()
+
 forest_res <-   
    forest_wf %>% 
    tune_grid(
@@ -122,7 +122,7 @@ final_wf <- forest_wf %>%
 # Faire le dernier entraînement
 final_fit <- 
    final_wf %>%
-   last_fit(split_dt) 
+   fit(train_dt)
 
 # Obtenir l'importance des variables
 final_model <- 
