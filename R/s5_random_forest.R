@@ -82,13 +82,13 @@ tune_spec <- rand_forest(
 
 # Établir les combinaisons d'hyperparamètres à tester 
 forest_grid <- grid_regular(
-   mtry(range = c(5L)),
-   trees(range = c(250L)),
-   min_n(range = c(500L))
+   mtry(range = c(1L, 15L)),
+   trees(range = c(100L, 500L)),
+   min_n(range = c(100L, 1000L))
 )
 
 # Séparer notre jeu de données en plis pour la validation croisée
-train_folds <- vfold_cv(train_dt, v = 5)
+train_folds <- vfold_cv(train_dt, v = 3)
 
 # Créer le workflow
 forest_wf <- workflow() %>%
@@ -125,16 +125,21 @@ final_wf <- forest_wf %>%
 # Faire le dernier entraînement
 final_fit <- 
    final_wf %>%
-   fit(train_dt)
+   last_fit(split_train_dt)
 
 # Obtenir l'importance des variables
 final_model <- 
    final_fit %>%
    extract_fit_parsnip()
 
+# Obtenir le rmse sur le jeu d'entraînement
+rmse_train <- final_model %>% 
+   augment(training(split_train_dt)) %>% 
+   rmse(dis_m3_pyr, .pred)
+
 # Retrait de variables ---------------------------------------------------------
 
-nb <- 20
+nb <- 25
 
 vars <- names(sort(final_model$fit$variable.importance, decreasing = TRUE)[1:nb])
 
@@ -152,10 +157,15 @@ river_dt <- river_dt[, c(vars,
 saveRDS(river_dt, output_path, compress = "xz")
 
 
-# Sauvegarder le modèle résultant ----------------------------------------------
+# Sauvegarder le informations pertinentes --------------------------------------
 
+info_ls <- list(
+   rmse_val = final_fit$.metrics,
+   rmse_train = rmse_train,
+   model = final_model$fit
+)
 
-saveRDS(final_model, output_path_model, compress = "xz")
+saveRDS(info_ls, output_path_obj, compress = "xz")
 
 
 

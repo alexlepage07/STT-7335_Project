@@ -199,7 +199,8 @@ translate_var <- function(vars) {
       slp_dg = "Inclinaison du terrain (en degrés)",
       lit_cl = "Classes lithologiques (type de roches)",
       snw_pc = "Couverture de neige",
-      hdi_ix = "Indice de développement humain"
+      hdi_ix = "Indice de développement humain",
+      sgr_dk = "Pente hydrique"
    )
    
    translation <- vapply(
@@ -575,10 +576,14 @@ graph_qqplot <- function(x) {
 
 table_vif <- function(vif) {
    
+   vif <- copy(vif)
+   
    vif[, VIF := round(VIF, 2)]
    w <- which(vif$VIF > 10)
    vif[, VIF := as.character(VIF)]
    vif[w, VIF := cell_spec(vif$VIF[w], color = "red")]
+   
+   vif$Variables <- translate_var(vif$Variables)
    
    kbl(
       x = vif[order(VIF, decreasing = TRUE)][1:(length(w) + 4), .(Variables, VIF)], 
@@ -596,13 +601,21 @@ table_vif <- function(vif) {
 
 table_ind_cond <- function(ind_cond) {
    
+   line <- ind_cond[abs(`Condition Index`) > 30][abs(`Condition Index`) == max(`Condition Index`),]
+   
    w <- which(
       sapply(
-         X = ind_cond[`Condition Index` > 25][1, ], 
-         FUN = function(x) x > 0.1)
+         X = line, 
+         FUN = function(x) x > 0.6)
    )
    
-   ind_cond[`Condition Index` > 25][1, names(w), with = FALSE] %>% 
+   if (!length(w)) {break}
+   
+   line <- line[, names(w), with = FALSE]
+   
+   names(line) <- translate_var(names(line))
+   
+   line %>% 
       kbl(
          align = "c", 
          digits = 2,

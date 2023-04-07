@@ -37,7 +37,6 @@ inst_load_packages(libs)
 
 input_path <- "Data/s3_donnees_standardisees.rds"
 output_path <- "Data/s4_donnees_sans_multicol.rds"
-output_path_vif <- "inst/s4_vif.rds"
 output_path_ind_cond <- "inst/s4_ind_cond.rds"
 
 
@@ -55,27 +54,6 @@ cat_var <- sapply(river_dt, function(x) !is.numeric(x))
 cat_var <- names(cat_var)[which(cat_var)]
 river_dt <- river_dt[, -cat_var, with = FALSE]
 
-# Retrait de variable parfaitement corrélées -----------------------------------
-
-
-cor_mat <- calc_matrix_cor(river_dt[, -c("HYRIV_ID",
-                                         "NEXT_DOWN",
-                                         "MAIN_RIV",
-                                         "LENGTH_KM",
-                                         "dis_m3_pyr")], 
-                           remove_dupl = TRUE)
-
-cor_mat[value > 0.97 & Var1 != Var2]
-
-removed_vars <- c("riv_tc_usu",
-                  "pre_mm_uyr",
-                  "pre_spring_max_csu",
-                  "snw_pc_uyr",
-                  "prm_pc_use",
-                  "swc_pc_uyr")
-
-river_dt <- river_dt[, -removed_vars, with = FALSE]
-
 
 # Diagnostique de multicolinéarité ---------------------------------------------
 
@@ -86,14 +64,13 @@ mod <- lm(
    data = river_dt
 )
 
-vif_1 <- setDT(ols_vif_tol(mod))
-table_vif(vif_1)
-
 ind_cond_1 <- setDT(ols_eigen_cindex(mod))
 table_ind_cond(ind_cond_1)
 
 river_dt <- 
-   river_dt[, -"ria_ha_csu", with = FALSE] 
+   river_dt[, -"ria_ha_usu", with = FALSE]
+
+removed_vars <- "ria_ha_usu"
 
 # Deuxième itération
 mod <- lm(
@@ -101,14 +78,13 @@ mod <- lm(
    data = river_dt
 )
 
-vif_2 <- setDT(ols_vif_tol(mod))
-table_vif(vif_2)
-
 ind_cond_2 <- setDT(ols_eigen_cindex(mod))
 table_ind_cond(ind_cond_2)
 
-river_dt <- river_dt[, -c("riv_cross_area_csu",
-                          "riv_larg_csu")]
+river_dt <- 
+   river_dt[, -"pre_mm_cyr", with = FALSE]
+
+removed_vars <- c("pre_mm_cyr", removed_vars)
 
 # Troisième itération
 mod <- lm(
@@ -116,13 +92,13 @@ mod <- lm(
    data = river_dt
 )
 
-vif_3 <- setDT(ols_vif_tol(mod))
-table_vif(vif_3)
-
-ind_cond_3  <- setDT(ols_eigen_cindex(mod))
+ind_cond_3 <- setDT(ols_eigen_cindex(mod))
 table_ind_cond(ind_cond_3)
 
-river_dt <- river_dt[, -c("pre_mm_cyr")]
+river_dt <- 
+   river_dt[, -"riv_tc_csu", with = FALSE]
+
+removed_vars <- c("riv_tc_csu", removed_vars)
 
 # Quatrième itération
 mod <- lm(
@@ -130,13 +106,22 @@ mod <- lm(
    data = river_dt
 )
 
-vif_4 <- setDT(ols_vif_tol(mod))
-table_vif(vif_4)
-
-ind_cond_4  <- setDT(ols_eigen_cindex(mod))
+ind_cond_4 <- setDT(ols_eigen_cindex(mod))
 table_ind_cond(ind_cond_4)
 
-river_dt <- river_dt[, -c("pre_mm_cyr")]
+river_dt <- 
+   river_dt[, -"prm_pc_use", with = FALSE]
+
+removed_vars <- c("prm_pc_use", removed_vars)
+
+# Cinquième itération
+mod <- lm(
+   formula = dis_m3_pyr ~ . - HYRIV_ID - NEXT_DOWN - MAIN_RIV - LENGTH_KM, 
+   data = river_dt
+)
+
+ind_cond_5 <- setDT(ols_eigen_cindex(mod))
+table_ind_cond(ind_cond_5)
 
 # Modification des données initiales -------------------------------------------
 
@@ -147,10 +132,8 @@ ini_dt <- ini_dt[, -removed_vars, with = FALSE]
 # Sauvegarder les objets résultants --------------------------------------------
 
 
-vif <- list(vif_1, vif_2, vif_3, vif_4)
-ind_cond <- list(ind_cond_1, ind_cond_2, ind_cond_3, ind_cond_4)
+ind_cond <- list(ind_cond_1, ind_cond_2, ind_cond_3, ind_cond_4, ind_cond_5)
 
-saveRDS(vif, output_path_vif, compress = "xz")
 saveRDS(ind_cond, output_path_ind_cond, compress = "xz")
 
 

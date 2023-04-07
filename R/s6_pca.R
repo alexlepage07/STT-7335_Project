@@ -78,7 +78,8 @@ w <- which(names(river_dt) == "dis_m3_pyr")
 # Réalisation du PCA
 pca <- PCA(X = river_dt, 
            quanti.sup = w, 
-           ncp = ncol(river_dt) - 1)
+           ncp = ncol(river_dt) - 1, 
+           graph = FALSE)
 
 
 # Création du nouveau jeu de données -------------------------------------------
@@ -98,7 +99,8 @@ res_dt <- cbind(
 # Réalisation du PCA
 pca <- PCA(X = river_dt, 
            quanti.sup = w, 
-           ncp = 4)
+           ncp = 4,
+           graph = FALSE)
 
 
 # Sauvegarder l'objet résultant ------------------------------------------------
