@@ -79,6 +79,7 @@ river_dt <- river_dt[, -removed_vars, with = FALSE]
 
 # Diagnostique de multicolinéarité ---------------------------------------------
 
+
 # Première itération
 mod <- lm(
    formula = dis_m3_pyr ~ . - HYRIV_ID - NEXT_DOWN - MAIN_RIV - LENGTH_KM, 
@@ -91,11 +92,8 @@ table_vif(vif_1)
 ind_cond_1 <- setDT(ols_eigen_cindex(mod))
 table_ind_cond(ind_cond_1)
 
-removed_vars <- c(removed_vars,
-                  "ria_ha_csu")
-
 river_dt <- 
-   river_dt[, -names(river_dt)[removed_vars %in% names(river_dt)], with = FALSE] 
+   river_dt[, -"ria_ha_csu", with = FALSE] 
 
 # Deuxième itération
 mod <- lm(
@@ -140,29 +138,26 @@ table_ind_cond(ind_cond_4)
 
 river_dt <- river_dt[, -c("pre_mm_cyr")]
 
-# Gérer les variables très corrélées -------------------------------------------
+# Modification des données initiales -------------------------------------------
 
 
-# Retrait de certaines variables fortement corrélées
-river_dt <- river_dt[, -c("riv_tc_usu",
-                          "pre_mm_uyr",
-                          "pre_mm_c05",
-                          "pre_mm_c04",
-                          "snw_pc_uyr",
-                          "prm_pc_use",
-                          "swc_pc_uyr")]
+ini_dt <- ini_dt[, -removed_vars, with = FALSE]
 
 
-# Sauvegarder les données résultantes ------------------------------------------
+# Sauvegarder les objets résultants --------------------------------------------
 
 
-saveRDS(vif, output_path_obj, compress = "xz")
+vif <- list(vif_1, vif_2, vif_3, vif_4)
+ind_cond <- list(ind_cond_1, ind_cond_2, ind_cond_3, ind_cond_4)
+
+saveRDS(vif, output_path_vif, compress = "xz")
+saveRDS(ind_cond, output_path_ind_cond, compress = "xz")
 
 
 # Sauvegarder les données résultantes ------------------------------------------
 
 
-saveRDS(river_dt, output_path, compress = "xz")
+saveRDS(ini_dt, output_path, compress = "xz")
 
 
 

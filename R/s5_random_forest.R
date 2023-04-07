@@ -50,12 +50,15 @@ river_dt <- readRDS(input_path)
 stopifnot("data.table" %in% class(river_dt))
 
 
-# Séparer le jeu ---------------------------------------------------------------
+# Séparer le jeu de données ----------------------------------------------------
 
 
 set.seed(7335)
-split_dt <- initial_split(river_dt, prop = 0.8)
+split_dt <- initial_split(river_dt, prop = 0.85)
 train_dt <- training(split_dt)
+split_train_dt <- initial_split(train_dt, prop = 1 - 0.15/0.85)
+train_dt <- training(split_train_dt)
+val_dt  <- testing(split_train_dt)
 test_dt  <- testing(split_dt)
 
 
