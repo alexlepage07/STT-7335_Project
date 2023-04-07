@@ -108,13 +108,12 @@ La forêt aléatoire entraînée pour la préselection a été construite à par
 
 ##### Méthodologie
 
-- Diagnostique de multicolinéarité
 - Séparer le jeu de données en 3 parties
 - Validation croisée à 3 plis à partir du jeu d'entraînement pour optimiser les hyperparamètres (minimiser l'EQM) :
       - Nombre de variables explicatives considérées à chaque embranchement     (1, 8, 15)
       - Nombre d'arbres (100, 300, 500)
       - Minimum d'observations dans un noeud (100, 550, 1000)
-- Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation de l'EQM sur le jeu de validation
+- Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation du modèle à partir du jeu de validation
 - Sélection des 25 variables les plus importantes
 
 ##### Résultats
@@ -142,7 +141,7 @@ res %>%
    )
 
 ```
-**Constats :** On voit que notre modèle ne semble pas être en surapprentissage. L'EQM est de 0.24 sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la vraie value est ~0.5 ($\sqrt{EQM}$). Pour se donner une idée de l'étendue de notre variable d'intérêt transformée :
+**Constats :** On voit que notre modèle ne semble pas être en surapprentissage. L'EQM est de 0.24 sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la valeur observée est ~0.5 ($\sqrt{EQM}$). Pour se donner une idée de l'étendue de notre variable d'intérêt transformée :
 
 - Moyenne : `r round(mean(river_dt$dis_m3_pyr), 3)`
 - Écart-type : `r round(sd(river_dt$dis_m3_pyr), 3)`
@@ -161,7 +160,7 @@ show_imp_var(rf_model$model, nb_var = nb_var)
 
 **Constats :**
 
-Pour sélectionner les variables, plusieurs options s'offrent à nous. Nous pouvons sélectionner soient un nombre fixé de variables explicatives. Également, nous pourrions couper à partir d'un certain seuil d'importance de variable. 
+Pour sélectionner les variables, plusieurs options s'offrent à nous. Nous pouvons sélectionner soient un nombre fixé de variables explicatives. Également, nous pourrions couper à partir d'un certain seuil d'importance de variable. Nous avons décidé de réduire de moitié nos variables explicatives à partir de cette méthode sachant que nous allons par la suite d'autres méthodes pour réduire le nombre de variables pour le modèle final.
 
 #### Analyse des composantes principales
 

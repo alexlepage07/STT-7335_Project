@@ -2,7 +2,6 @@
 
 
 # Un fichier dédié à la réalisation de l'analyse en composantes principales
-# dans un but de sélection de variables.
 
 
 # Université Laval

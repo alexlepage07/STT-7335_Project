@@ -56,8 +56,11 @@ stopifnot("data.table" %in% class(river_dt))
 
 
 set.seed(7335)
-split_dt <- initial_split(river_dt, prop = 0.8)
+split_dt <- initial_split(river_dt, prop = 0.85)
 train_dt <- training(split_dt)
+split_train_dt <- initial_split(train_dt, prop = 1 - 0.15/0.85)
+train_dt <- training(split_train_dt)
+val_dt  <- testing(split_train_dt)
 test_dt  <- testing(split_dt)
 
 
@@ -102,7 +105,7 @@ lasso_grid <- grid_regular(
 )
 
 # Séparer notre jeu de données en plis pour la validation croisée
-train_folds <- vfold_cv(train_dt, v = 5)
+train_folds <- vfold_cv(train_dt, v = 3)
 
 # Créer le workflow
 lasso_wf <- workflow() %>%

@@ -1,8 +1,7 @@
-# s5_random_forest.R
+# s4_manage_multicolinearity.R
 
 
-# Un fichier dédié à sélectionner les variables importantes à partir d'un forêt
-# aléatoire.
+# Un fichier dédié à faire un diagnostique de multicolinéarité
 
 
 # Université Laval
@@ -26,8 +25,7 @@ source("./R/utils.R")
 # Librairies -------------------------------------------------------------------
 
 
-libs <- c("ggplot2",
-          "olsrr")
+libs <- "olsrr"
 
 inst_load_packages(libs)
 
