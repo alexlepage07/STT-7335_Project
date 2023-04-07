@@ -72,13 +72,13 @@ Doit se faire sur la jeu de données d'entraînement (voir p.245 ESL)
 
 ## Choix des métriques
 
-Notre variable d'intérêt, soit le débit d'eau des rivières, est une variable continue. De ce fait, nous avons la possibilité de prendre : 
+Notre variable d'intérêt, soit le débit d'eau des rivières, est une variable continue. De ce fait, nous avons la possibilité de prendre comme métrique de performance : 
 
 - Erreur quadratique moyen (EQM)
 - Erreur absolue moyen (EAM)
 - Gini <span style="color:red">Il existe il me semble le Gini pour des variables continues</span>
 
-Nous prendrons l'erreur quatratique moyen autant pour évaluer nos modèles que comme métrique à minimiser lorsque nous optimisons les hyperparamètres pour certains modèles qui seront utilisés.
+Nous prendrons l'erreur quatratique moyen autant pour évaluer nos modèles que comme métrique à minimiser lorsque nous optimisons les hyperparamètres pour certains modèles qui en ont.
 
 <span style="color:red">Justifier pourquoi on ne prendre pas EAM</span>
 
@@ -92,7 +92,7 @@ Par ailleurs, bien que nous avons une dépendance spatiale entre les observation
 
 ## Préselection de variables 
 
-Comme mentionné, pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité ainsi que la multicolinéarité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. En faisant ainsi, cela nous permet d'obtenir un modèle final plus interprétable et de diminuer les risques de surapprentissage^[Gregorutti, B. & Michel, B & Saint-Pierre, P. (2017). Correlation and variable importance in random forests. Statistics and Computing, v27 n3 (201705): 659-678.]. Pour ce faire, nous entraînons une forêt aléatoire pour faire une sélection de variables basée sur leur importance. Par la suite, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et, ainsi, nous défaire de la multicolinéarité. Nous allons finalement faire une modélisation avec régularisation, soit celle de type _Lasso_, pour finaliser cette sélection de variables. Après cette étape de présélection de variables, nous faisons, finalement, la dernière étape qui est de modéliser notre variable d'intérêt avec un modèle mixte, et ce, avec les variables finales obtenues avec la régression _Lasso_.
+Comme mentionné, pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité ainsi que la multicolinéarité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. En faisant ainsi, cela nous permet d'obtenir un modèle final plus interprétable et de diminuer les risques de surapprentissage^[Gregorutti, B. & Michel, B & Saint-Pierre, P. (2017). Correlation and variable importance in random forests. Statistics and Computing, v27 n3 (201705): 659-678.]. Pour ce faire, nous entraînons une forêt aléatoire pour faire une sélection de variables basée sur leur importance. Par la suite, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et, ainsi, nous défaire de la multicolinéarité. Puis, nous entraînons un modèle avec régularisation, soit un modèle de type _Lasso_, pour finaliser cette sélection de variables. Ce sera aprèes ces étapes de présélection de variables que nous ferons la dernière étape qui est de modéliser notre variable d'intérêt avec un modèle mixte.
 
 #### Diagnostique de multicolinéarité
 
