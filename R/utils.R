@@ -633,3 +633,55 @@ table_ind_cond <- function(ind_cond) {
       )
 }
 
+graph_pred_by_var <- function(pred, obs, var, nm_var) {
+   
+   if (is.numeric(var)) {
+      var <- cut(
+         var,
+         c(-Inf,
+           seq(from = quantile(var, 0.01), 
+               to = quantile(var, 0.99),
+               length.out = 10),
+           Inf)
+      )
+   }
+   
+   dt <- data.table(
+      pred, 
+      obs, 
+      var
+   )
+   
+   res <- dt[, .(Prédictions = mean(pred), Observés = mean(obs), N = .N / nrow(dt)), by = var]
+   res <- melt(
+      data = res, id.vars = c("var", "N"), measure.vars = c("Prédictions", "Observés")
+   )
+   
+   N <- res$N
+   
+   ggplot(
+      data = res,
+   ) + 
+      geom_point(
+         mapping = aes(x = var, y = value, group = variable, color = variable)
+      ) +
+      geom_line(
+         mapping = aes(x = var, y = value, group = variable, color = variable)
+      ) +
+      geom_col(
+         mapping = aes(x = var, y = N),
+         alpha = 0.3
+      ) +
+      theme(
+         axis.text.x = element_text(angle = 35, vjust = 0.65),
+         text = element_text(family = "Times New Roman")
+      ) +
+      labs(
+         x = translate_var(nm_var),
+         y = "Débit d'eau prédit/observés",
+         fill = ""
+      )
+   
+   
+}
+

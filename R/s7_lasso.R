@@ -32,7 +32,7 @@ libs <- c("data.table",
           "glmnet",
           "moments",
           "MASS",
-          "doParallel")
+          "datapasta")
 
 inst_load_packages(libs)
 
@@ -78,8 +78,8 @@ shapiro.test(
 skewness(river_dt$dis_m3_pyr)
 kurtosis(river_dt$dis_m3_pyr)
 
-graph_qqplot(river_dt$dis_m3_pyr)
-graph_density(river_dt, "dis_m3_pyr")
+# graph_qqplot(river_dt$dis_m3_pyr)
+# graph_density(river_dt, "dis_m3_pyr")
 
 
 # Sélection des hyperparamètres ------------------------------------------------
@@ -130,8 +130,6 @@ lasso_wf <- workflow() %>%
    )
 
 # Faire la validation croisée
-registerDoParallel()
-
 lasso_res <-   
    lasso_wf %>% 
    tune_grid(
@@ -141,6 +139,7 @@ lasso_res <-
 
 
 # Modèle final -----------------------------------------------------------------
+
 
 # Sélectionner le meilleur modèle basé sur la mesure de performance choisie
 best_lasso <- lasso_res %>%
@@ -188,16 +187,20 @@ g <- lasso_res %>%
    scale_x_log10() +
    labs(
       x = "\U03BB",
-      y = "EQM^0.5"
+      y = "EQM^0.5",
+      title = "Racine carrée de l'EQM obtenu en validation croisée en fonction de \U03BB"
+   )  + 
+   theme(
+      text = element_text(family = "Times New Roman")
    )
 
 # Retirer les variables --------------------------------------------------------
 
 coefs <- coef(final_model$fit, s = final_model$spec$args$penalty)
 
-vars <- coefs@Dimnames[[1]][coefs@i + 1][-1]
+vars <- coefs@Dimnames[[1]][-(coefs@i + 1)][-1]
 
-datapasta::vector_paste_vertical(vars)
+# vector_paste_vertical(vars)
 
 river_dt <- river_dt[, c("lka_pc_use",
                          "riv_tc_usu",
@@ -221,6 +224,16 @@ river_dt <- river_dt[, c("lka_pc_use",
                          "dis_m3_pyr"), with = FALSE]
 
 
+# Comparaison prédit/observés --------------------------------------------------
+
+
+graph_pred_by_var(
+   pred = final_fit$.predictions[[1]]$.pred, 
+   obs = final_fit$.predictions[[1]]$dis_m3_pyr,
+   var = val_dt$pre_mm_uyr,
+   nm_var = "for_pc_use"
+)
+
 # Sauvegarder les données résultantes ------------------------------------------
 
 
@@ -232,7 +245,7 @@ saveRDS(river_dt, output_path, compress = "xz")
 info_ls <- list(
    rmse_val = final_fit$.metrics,
    rmse_train = rmse_train,
-   model = final_model$fit, 
+   model = final_model,
    graph_cv = g
 )
 

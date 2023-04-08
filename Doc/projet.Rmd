@@ -26,9 +26,10 @@ path_fct <- "../R"
 
 # Charger les objets -----------------------------------------------------------
 
-
 rf_model <- readRDS(file.path(path_obj, "s5_random_forest.rds"))
 pca <- readRDS(file.path(path_obj, "s6_pca.rds"))
+lasso_model <- readRDS(file.path(path_obj, "s7_lasso.rds"))
+
 river_dt <- readRDS(file.path(path_data, "s3_donnees_standardisees.rds"))
 
 
@@ -37,6 +38,14 @@ river_dt <- readRDS(file.path(path_data, "s3_donnees_standardisees.rds"))
 
 source(file.path(path_fct, "utils.R"))
 
+
+# Librairies -------------------------------------------------------------------
+
+
+libs <- c("data.table",
+          "glmnet")
+
+inst_load_packages(libs)
 ```
 
 # Contexte et objectifs (1/2 page)
@@ -114,7 +123,7 @@ La forêt aléatoire entraînée pour la préselection a été construite à par
    - Nombre de variables explicatives considérées à chaque embranchement (1, 8, 15)
    - Nombre d'arbres (100, 300, 500)
    - Minimum d'observations dans un noeud (100, 550, 1000)
-      
+
 - Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation du modèle à partir du jeu de validation
 - Sélection des 25 variables les plus importantes
 
@@ -157,12 +166,16 @@ Nous affichons les `r (nb_var <- 25)` variables les plus importantes basée sur 
 # Afficher les variables importantes
 show_imp_var(rf_model$model, nb_var = nb_var)
 
+# Nombre de variables conservées
+
+rf_nb_vars <- length(which(rf_model$model$variable.importance > 5))
+
 
 ```
 
 **Constats :**
 
-Pour sélectionner les variables, plusieurs options s'offrent à nous. Nous pouvons sélectionner soient un nombre fixé de variables explicatives. Également, nous pourrions couper à partir d'un certain seuil d'importance de variable. Nous avons décidé de réduire de moitié nos variables explicatives à partir de cette méthode sachant que nous allons par la suite d'autres méthodes pour réduire le nombre de variables pour le modèle final.
+Pour sélectionner les variables, plusieurs options s'offrent à nous. Nous pouvons sélectionner soient un nombre fixé de variables explicatives. Également, nous pouvons couper à partir d'un certain seuil d'importance de variable. Nous avons décidé de garder que les variables qui ont un niveau d'importance supérieur à 5 ce qui nous a mené à conserver `r rf_nb_vars` variables.
 
 #### Analyse des composantes principales
 
@@ -271,8 +284,79 @@ Comme le démontre cette formule, plus la valeur de lambda est élevé, plus la 
 
 Le modèle a l'avantage de gérer les situations où nous avons deux variables fortement corrélées où, dans une régression normale, l'un pourrait recevoir un coefficient positif élevé et l'autre un coefficient négatif pour capturer l'effet commun aux deux variables^[he elements of statistical learning : data mining, inference, and prediction, p. 63].
 
+##### Méthodologie
 
-$$$$
+- Séparer le jeu de données en 3 parties
+- Validation croisée à 3 plis à partir du jeu d'entraînement pour optimiser le paramètre de pénalité $\lambda$ (minimiser l'EQM) : 25 valeurs entre $1 \times 10^{-10}$ et 1.
+- Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation du modèle à partir du jeu de validation
+- Sélection des variables basée sur le coefficient du modèle
+
+##### Résultats
+
+Voici, le résulats de la validation croisée pour obtenir le $\lambda$ optimal. 
+
+```{r}
+
+lasso_model$graph_cv
+
+```
+
+**Constats :** Nous pouvons observer qu'en dessous d'une certaine valeur, nous obtenons toujours le même $\sqrt{EQM}$. Comme nous visions à sélectionner des variables avec ce modèle, nous avons pris le $\lambda$ le plus élevé au travers ceux qui minimise l'EQM (voir la ligne horizontale). Ainsi, nous avons sélectionné un $\lambda$ = `r lasso_model$model$spec$args$penalty`.
+
+Voici, l'EQM obtenu pour notre jeu de validation et, en comparaison, celui avec basé sur le jeu d'entraînement :
+
+```{r}
+
+res <- data.table(
+   rmse_train = lasso_model$rmse_train$.estimate[1],
+   rmse_val = lasso_model$rmse_val[[1]]$.estimate[1]
+)
+
+res %>% 
+   kbl(
+      align = "c", 
+      digits = 2,
+      col.names = c("EQM (entr.)", "EQM (val.)"),
+      booktabs = TRUE, 
+      escape = FALSE
+   ) %>% 
+   kable_classic(
+      full_width = FALSE, 
+      html_font = "Cambria"
+   )
+
+```
+**Constats :** L'EQM est de `r round(lasso_model$rmse_val[[1]]$.estimate[1], 2)` sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la valeur observée est  $\sqrt{EQM}$ = ~`r round(sqrt(lasso_model$rmse_val[[1]]$.estimate[1]), 2)`. On remarque que l'on a un EQM plus élevé qu'avec la forêt aléatoire.
+
+Voici, les variables qui ont été conservée, qui avait un coefficient supérieur à 0 dans le modèle _Lasso_ :
+
+```{r}
+
+coefs <- coef(
+   object = lasso_model$model$fit, 
+   s = lasso_model$model$spec$args$penalty
+)
+
+vars <- coefs@Dimnames[[1]][coefs@i + 1][-1]
+
+kbl(
+   x = translate_var(vars), 
+   align = "c", 
+   col.names = c("Variables"), 
+   booktabs = TRUE, 
+   escape = FALSE
+) %>% kable_classic(
+   full_width = FALSE, 
+   html_font = "Cambria"
+)
+
+# Nombre de variables
+lasso_nb_vars <- length(unique(substr(vars, 1, 6)))
+
+```
+
+Nous passons, donc, de `r rf_nb_vars` variables à `r lasso_nb_vars`.
+
 
 # Analyse, discussion et conclusion (2-3 pages)
 

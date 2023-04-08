@@ -162,7 +162,7 @@ saveRDS(river_dt, output_path, compress = "xz")
 info_ls <- list(
    rmse_val = final_fit$.metrics,
    rmse_train = rmse_train,
-   model = final_model$fit
+   model = final_model
 )
 
 saveRDS(info_ls, output_path_obj, compress = "xz")
