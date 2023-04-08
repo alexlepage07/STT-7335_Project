@@ -40,7 +40,7 @@ inst_load_packages(libs)
 # Chemins d'accès --------------------------------------------------------------
 
 
-input_path <- "Data/s6_donnees_orthogonalisees.rds"
+input_path <- "Data/s5_donnees_rf_var_sel.rds"
 output_path <- "Data/s7_donnees_lasso_var_sel.rds"
 output_path_obj <- "inst/s7_lasso.rds"
 
@@ -57,7 +57,7 @@ stopifnot("data.table" %in% class(river_dt))
 
 set.seed(7335)
 split_dt <- initial_split(river_dt, prop = 0.85)
-train_dt <- training(split_dt)
+train_dt <- training(split_dt) 
 split_train_dt <- initial_split(train_dt, prop = 1 - 0.15/0.85)
 train_dt <- training(split_train_dt)
 val_dt  <- testing(split_train_dt)
@@ -72,14 +72,14 @@ shapiro.test(
    x = river_dt$dis_m3_pyr[sample(
       x = 1:length(river_dt$dis_m3_pyr), 
       size = 5000
-      )]
+   )]
 )
 
 skewness(river_dt$dis_m3_pyr)
 kurtosis(river_dt$dis_m3_pyr)
 
 graph_qqplot(river_dt$dis_m3_pyr)
-graph_density(numeric_dt, "dis_m3_pyr")
+graph_density(river_dt, "dis_m3_pyr")
 
 
 # Sélection des hyperparamètres ------------------------------------------------
@@ -107,13 +107,26 @@ lasso_grid <- grid_regular(
 # Séparer notre jeu de données en plis pour la validation croisée
 train_folds <- vfold_cv(train_dt, v = 3)
 
+# Créer une recipe
+rec <- recipe(
+   dis_m3_pyr ~ ., 
+   data = train_dt
+) %>% 
+   step_rm(
+      "HYRIV_ID",
+      "NEXT_DOWN",
+      "MAIN_RIV",
+      "LENGTH_KM"
+   ) %>% 
+   step_dummy(
+      all_nominal()
+   ) 
+
 # Créer le workflow
 lasso_wf <- workflow() %>%
+   add_recipe(rec) %>% 
    add_model(
       spec = tune_spec
-   ) %>%
-   add_formula(
-      formula = dis_m3_pyr ~ . - HYRIV_ID - NEXT_DOWN - MAIN_RIV - LENGTH_KM
    )
 
 # Faire la validation croisée
@@ -131,7 +144,11 @@ lasso_res <-
 
 # Sélectionner le meilleur modèle basé sur la mesure de performance choisie
 best_lasso <- lasso_res %>%
-   select_best(metric = "rmse")
+   estimate_tune_results() %>%
+   filter(.metric == "rmse") %>%
+   filter(mean <= min(mean) + 0.05) %>% 
+   arrange(desc(penalty)) %>% 
+   filter(row_number() == 1)
 
 # Mettre à jour le workflow avec les hyperparamètres venant maximiser la 
 # métrique de performance visée
@@ -143,21 +160,66 @@ final_wf <- lasso_wf %>%
 # Faire le dernier entraînement
 final_fit <- 
    final_wf %>%
-   fit(train_dt)
+   last_fit(split_train_dt)
 
-lasso_res %>%
+# Obtenir le dernier modèle
+final_model <- 
+   final_fit %>%
+   extract_fit_parsnip()
+
+# Obtenir le rmse sur le jeu d'entraînement
+rmse_train <- 
+   final_wf %>%
+   fit(train_dt) %>% 
+   predict(train_dt) %>% 
+   rmse(train_dt$dis_m3_pyr, .pred)
+
+# Graphique de la validation croisée
+g <- lasso_res %>%
    collect_metrics() %>%
-   ggplot(aes(penalty, mean, color = .metric)) +
-   geom_errorbar(aes(
-      ymin = mean - std_err,
-      ymax = mean + std_err
-   ),
-   alpha = 0.5
-   ) +
-   geom_line(size = 1.5) +
-   facet_wrap(~.metric, scales = "free", nrow = 2) +
+   filter(.metric == "rmse") %>%
+   ggplot() +
+   geom_point((
+      mapping = aes(penalty, mean)
+   )) +
+   geom_vline(
+      xintercept = best_lasso$penalty
+   ) + 
    scale_x_log10() +
-   theme(legend.position = "none")
+   labs(
+      x = "\U03BB",
+      y = "EQM^0.5"
+   )
+
+# Retirer les variables --------------------------------------------------------
+
+coefs <- coef(final_model$fit, s = final_model$spec$args$penalty)
+
+vars <- coefs@Dimnames[[1]][coefs@i + 1][-1]
+
+datapasta::vector_paste_vertical(vars)
+
+river_dt <- river_dt[, c("lka_pc_use",
+                         "riv_tc_usu",
+                         "gwt_cm_cav",
+                         "slp_dg_uav",
+                         "sgr_dk_rav",
+                         "snw_pc_cyr",
+                         "wet_pc_u01",
+                         "cly_pc_uav",
+                         "swc_pc_uyr",
+                         "kar_pc_cse",
+                         "riv_larg_csu",
+                         "pre_spring_max_csu",
+                         "glc_cl_cmj",
+                         "wet_cl_cmj",
+                         "lit_cl_cmj",
+                         "HYRIV_ID",
+                         "NEXT_DOWN",
+                         "MAIN_RIV",
+                         "LENGTH_KM",
+                         "dis_m3_pyr"), with = FALSE]
+
 
 # Sauvegarder les données résultantes ------------------------------------------
 
@@ -167,8 +229,14 @@ saveRDS(river_dt, output_path, compress = "xz")
 
 # Sauvegarder le modèle résultant ----------------------------------------------
 
+info_ls <- list(
+   rmse_val = final_fit$.metrics,
+   rmse_train = rmse_train,
+   model = final_model$fit, 
+   graph_cv = g
+)
 
-saveRDS(final_model, output_path_model, compress = "xz")
+saveRDS(info_ls, output_path_obj, compress = "xz")
 
 
 

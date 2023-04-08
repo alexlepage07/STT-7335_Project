@@ -203,7 +203,9 @@ translate_var <- function(vars) {
       sgr_dk = "Pente hydrique",
       swc_pc = "Taux de saturation du sol en eau",
       snow_p = "Précipitation de neige",
-      kar_pc = "Proportion de Karst (une roche sédimentaire se déformant sous l'effet de l'érosion)"
+      kar_pc = "Proportion de Karst (une roche sédimentaire se déformant sous l'effet de l'érosion)",
+      glc_cl = "Classification du terrain (forêt, ville, champs, etc.)",
+      pre_sp = "Précipitations printanières maximales (en mm)"
    )
    
    translation <- vapply(
@@ -221,7 +223,7 @@ translate_var <- function(vars) {
    translation <- paste0(
       translation, 
       " : ",
-      substr(vars, nchar(vars) - 2, nchar(vars))
+      gsub("_", "", substr(vars, nchar(vars) - 2, nchar(vars)))
    )
    
    translation

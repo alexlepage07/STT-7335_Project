@@ -110,9 +110,11 @@ La forêt aléatoire entraînée pour la préselection a été construite à par
 
 - Séparer le jeu de données en 3 parties
 - Validation croisée à 3 plis à partir du jeu d'entraînement pour optimiser les hyperparamètres (minimiser l'EQM) :
-      - Nombre de variables explicatives considérées à chaque embranchement     (1, 8, 15)
-      - Nombre d'arbres (100, 300, 500)
-      - Minimum d'observations dans un noeud (100, 550, 1000)
+
+   - Nombre de variables explicatives considérées à chaque embranchement (1, 8, 15)
+   - Nombre d'arbres (100, 300, 500)
+   - Minimum d'observations dans un noeud (100, 550, 1000)
+      
 - Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation du modèle à partir du jeu de validation
 - Sélection des 25 variables les plus importantes
 
@@ -221,7 +223,7 @@ graph_cattell(pca)
 </div>
 
 **Constats :**
-À partir du graphique ci-dessous qui expose la règle du 80%, on voit qu'il faut pour expliquer 80% de la variabilité de nos données, conserver `r w[1]` premières composantes. Si nous utilisons la règle de _Joliffe_, qui conserve que les composantes ayant des valeurs propres > 0.7, qui est plus sévère que celle de _Kaiser_, il faut conserver les 7 premières composantes principales. Si nous utilisons plutôt la règle de Cattell, pour faire cette sélection, on observe que les valeurs propres semblent se stabiliser à partir de la composante 10. Nous pourrions, donc, garder que les 9 premières composantes. Pour être conservateurs, nous conservons, donc, les 9 premières composantes.
+À partir du graphique ci-dessous qui expose la règle du 80%, on voit qu'il faut pour expliquer 80% de la variabilité de nos données, conserver `r w[1]` premières composantes. Si nous utilisons la règle de _Joliffe_, qui conserve que les composantes ayant des valeurs propres > 0.7, qui est plus sévère que celle de _Kaiser_, il faut conserver les 9 premières composantes principales. Si nous utilisons plutôt la règle de Cattell, pour faire cette sélection, on observe que les valeurs propres semblent se stabiliser à partir de la composante 10. Nous pourrions, donc, garder que les 9 premières composantes. Pour être conservateurs, nous conservons, donc, les 9 premières composantes.
 
 Nous allons afficher les trois premières composantes avec la variable de débit (qui n'a pas été inclut dans cette analyse des composantes principales). Celles-ci conservent à elles seules plus de 50% de la variabilité du jeu de données. Nous affichons que les `r (nb_var <- 10)` variables qui contribuent le plus à la variabilité de ces composantes.
 
@@ -261,11 +263,11 @@ graph_pca(pca, components = c(2, 3), nb_var = nb_var)
 
 #### Modèle _Lasso_
 
-Un modèle _Lasso_ est une méthode de contraction des coefficients. Comparé au modèle linéaire, ce modèle se voit ajouté une contrainte soit une valeur maximale totale qu'il peut attribuer à l'ensemble de ses coefficients. Les coefficients du modèle sont établis en minimisant l'erreur quadratique au travers les observations avec la contrainte que la somme des coefficients ne peut pas dépasser une certaine valeur :
+Un modèle _Lasso_ est une méthode de contraction des coefficients. Comparé au modèle linéaire, ce modèle se voit ajouter une contrainte, soit une valeur maximale totale qu'il peut attribuer à l'ensemble de ses coefficients. Les coefficients du modèle sont établis en minimisant l'erreur quadratique au travers les observations avec la contrainte que la somme des coefficients ne peut pas dépasser une certaine valeur :
 
 $$\underset{\vec{\beta}}{argmin}(\sum_{i=1}^N(y_i -\hat{y}_i)^2 + \lambda\sum_{j}^p|\beta_j|)$$
 
-Comme le démontre cette formule, plus la valeur de lambda est élevé, plus la contrainte est grande, et plus le nombre de coefficients qui sont contractés risquent d'être élevé. Pour déterminer ce seul et unique hyperparamètre du modèle, nous effectuons une validation croisée sur le jeu d'entraînement. 
+Comme le démontre cette formule, plus la valeur de lambda est élevé, plus la contrainte est grande, et plus le nombre de coefficients qui risquent d'être contractés est élevé. Pour déterminer ce seul et unique hyperparamètre du modèle, nous effectuons une validation croisée sur le jeu d'entraînement. 
 
 Le modèle a l'avantage de gérer les situations où nous avons deux variables fortement corrélées où, dans une régression normale, l'un pourrait recevoir un coefficient positif élevé et l'autre un coefficient négatif pour capturer l'effet commun aux deux variables^[he elements of statistical learning : data mining, inference, and prediction, p. 63].
 

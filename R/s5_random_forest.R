@@ -139,9 +139,9 @@ rmse_train <- final_model %>%
 
 # Retrait de variables ---------------------------------------------------------
 
-nb <- 25
+w <- which(final_model$fitvariable.importance > 5)
 
-vars <- names(sort(final_model$fit$variable.importance, decreasing = TRUE)[1:nb])
+vars <- names(final_model$fit$variable.importance[w])
 
 river_dt <- river_dt[, c(vars,
                          "HYRIV_ID",
