@@ -98,7 +98,7 @@ res_dt <- cbind(
 # Réalisation du PCA
 pca <- PCA(X = river_dt, 
            quanti.sup = w, 
-           ncp = 4,
+           ncp = nb_dim + 1,
            graph = FALSE)
 
 

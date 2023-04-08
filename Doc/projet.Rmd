@@ -141,7 +141,7 @@ res %>%
    )
 
 ```
-**Constats :** On voit que notre modèle ne semble pas être en surapprentissage. L'EQM est de 0.24 sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la valeur observée est ~0.5 ($\sqrt{EQM}$). Pour se donner une idée de l'étendue de notre variable d'intérêt transformée :
+**Constats :** On voit que notre modèle ne semble pas être en surapprentissage. L'EQM est de `r round(rf_model$rmse_val[[1]]$.estimate[1], 2)` sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la valeur observée est  $\sqrt{EQM}$ = ~`r round(sqrt(rf_model$rmse_val[[1]]$.estimate[1]), 2)`. Pour se donner une idée de l'étendue de notre variable d'intérêt transformée :
 
 - Moyenne : `r round(mean(river_dt$dis_m3_pyr), 3)`
 - Écart-type : `r round(sd(river_dt$dis_m3_pyr), 3)`
@@ -221,7 +221,7 @@ graph_cattell(pca)
 </div>
 
 **Constats :**
-À partir du graphique ci-dessous qui expose la règle du 80%, on voit qu'il faut pour expliquer 80% de la variabilité de nos données, conserver `r w[1]` premières composantes. Si nous utilisons la règle de _Joliffe_, qui conserve que les composantes ayant des valeurs propres > 0.7, qui est plus sévère que celle de _Kaiser_, il faut conserver les 8 premières composantes principales. Si nous utilisons plutôt la règle de Cattell, pour faire cette sélection, on observe que les valeurs propres semblent se stabiliser à partir de la composante 10. Nous pourrions, donc, garder que les 9 premières composantes. Pour être conservateurs, nous conservons, donc, les 9 premières composantes.
+À partir du graphique ci-dessous qui expose la règle du 80%, on voit qu'il faut pour expliquer 80% de la variabilité de nos données, conserver `r w[1]` premières composantes. Si nous utilisons la règle de _Joliffe_, qui conserve que les composantes ayant des valeurs propres > 0.7, qui est plus sévère que celle de _Kaiser_, il faut conserver les 7 premières composantes principales. Si nous utilisons plutôt la règle de Cattell, pour faire cette sélection, on observe que les valeurs propres semblent se stabiliser à partir de la composante 10. Nous pourrions, donc, garder que les 9 premières composantes. Pour être conservateurs, nous conservons, donc, les 9 premières composantes.
 
 Nous allons afficher les trois premières composantes avec la variable de débit (qui n'a pas été inclut dans cette analyse des composantes principales). Celles-ci conservent à elles seules plus de 50% de la variabilité du jeu de données. Nous affichons que les `r (nb_var <- 10)` variables qui contribuent le plus à la variabilité de ces composantes.
 
@@ -235,7 +235,7 @@ Nous allons afficher les trois premières composantes avec la variable de débit
 
 
 # Afficher la composante #1 et #2
-graph_pca(pca, nb_var = nb_var)
+graph_pca(pca, nb_var = nb_var) 
 
 
 ```

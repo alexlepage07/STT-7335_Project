@@ -200,7 +200,10 @@ translate_var <- function(vars) {
       lit_cl = "Classes lithologiques (type de roches)",
       snw_pc = "Couverture de neige",
       hdi_ix = "Indice de développement humain",
-      sgr_dk = "Pente hydrique"
+      sgr_dk = "Pente hydrique",
+      swc_pc = "Taux de saturation du sol en eau",
+      snow_p = "Précipitation de neige",
+      kar_pc = "Proportion de Karst (une roche sédimentaire se déformant sous l'effet de l'érosion)"
    )
    
    translation <- vapply(
