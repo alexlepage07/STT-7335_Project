@@ -26,6 +26,7 @@ path_fct <- "../R"
 
 # Charger les objets -----------------------------------------------------------
 
+ind_cond <- readRDS(file.path(path_obj, "s4_ind_cond.rds"))
 rf_model <- readRDS(file.path(path_obj, "s5_random_forest.rds"))
 pca <- readRDS(file.path(path_obj, "s6_pca.rds"))
 lasso_model <- readRDS(file.path(path_obj, "s7_lasso.rds"))
@@ -91,9 +92,7 @@ Nous prendrons l'erreur quatratique moyen autant pour évaluer nos modèles que 
 
 <span style="color:red">Justifier pourquoi on ne prendre pas EAM</span>
 
-## Choix des hyperparamètres 
-
-## Stratégie de validation
+## Stratégie de validation et choix des hyperparamètres
 
 Notre stratégie de validation est de séparer notre jeu de données en 3 parties soit une pour l'entraînement (70%), une pour la validation des modèles et leur comparaison entre eux (15%), et une pour tester notre modèle final (15%). Pour faire la sélection d'hyperparamètres, nous faisons une validation croisée à partir  du jeu d'entraînement. Pour estimer l'erreur de généralisation basée sur ces hyperparamètres optimaux, nous allons utiliser le jeu de validation. La raison pourquoi nous n'estimons pas l'erreur de généralisation sur notre jeu d'entraînement (et pourquoi nous avons ajouté un jeu de validation) est que si nous estimons l'erreur sur le jeu d'entraînement avec des hyperparamètre qui ont été choisis pour l'optimiser, nous allons possiblement sous-estimer notre erreur de généralisation puisque nous estimons une erreur avec des hyperparamètres qui la minimise. Ainsi, pour avoir un portrait adéquat de l'erreur de généralisation, nous utilisons le jeu de validation pour faire cette estimation. 
 
@@ -101,62 +100,23 @@ Par ailleurs, bien que nous avons une dépendance spatiale entre les observation
 
 ## Préselection de variables 
 
-Comme mentionné, pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité ainsi que la multicolinéarité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. En faisant ainsi, cela nous permet d'obtenir un modèle final plus interprétable et de diminuer les risques de surapprentissage^[Gregorutti, B. & Michel, B & Saint-Pierre, P. (2017). Correlation and variable importance in random forests. Statistics and Computing, v27 n3 (201705): 659-678.]. Pour ce faire, nous entraînons une forêt aléatoire pour faire une sélection de variables basée sur leur importance. Par la suite, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et, ainsi, nous défaire de la multicolinéarité. Puis, nous entraînons un modèle avec régularisation, soit un modèle de type _Lasso_, pour finaliser cette sélection de variables. Ce sera aprèes ces étapes de présélection de variables que nous ferons la dernière étape qui est de modéliser notre variable d'intérêt avec un modèle mixte.
+Comme mentionné, pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité ainsi que la multicolinéarité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. En faisant ainsi, cela nous permet d'obtenir un modèle final plus interprétable et de diminuer les risques de surapprentissage^[Gregorutti, B. & Michel, B & Saint-Pierre, P. (2017). Correlation and variable importance in random forests. Statistics and Computing, v27 n3 (201705): 659-678.]. 
+
+Pour ce faire, nous entraînons une forêt aléatoire pour faire une sélection de variables basée sur leur importance. Par la suite, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et, ainsi, nous défaire de la multicolinéarité. Puis, nous entraînons un modèle avec régularisation, soit un modèle de type _Lasso_, pour finaliser cette sélection de variables.
+
+Il est à noter que les étapes de présélection de variables qui font appel à la variable d'intérêt se font sur les jeux d'entraînement et de validation seulement. En effet, comme il est mentionné, dans _Element of Statistical Learning_ (_ELS_)^[The elements of statistical learning : data mining, inference, and prediction, p. 245], l'objectif, dans une stratégie de validation, est d'avoir un jeu de données de test qui est indépendant du modèle que l'on entraîne. Or, si nous faisons la sélection des variables explicatives, sur l'ensemble de notre jeu de données, cette indépendance ne sera pas respectée puisque le modèle sera basé sur des variables explicatives qui ont été sélectionnées partiellement à partir du jeu de test. 
+
+Par ailleurs, nous soulignons que l'ensemble des modèles construits pour faire la présélection sont évalués en terme de performance. En effet, même si un modèle entraîné n'a pas de bonnes performances, nous avons malgré tout une importance des variables ou, dans le cas du modèle _Lasso_, des coefficients contractés à 0. De ce fait, avant de faire la sélection des variables, nous allons nous assurer que le modèle construit est un modèle qui est assez performant pour l'utiliser pour faire une sélection de variable à partir de celui-ci. L'étape d'évaluation des modèles se fera sur notre jeu de données de validation.
 
 #### Diagnostique de multicolinéarité
 
-Avant de faire une présélection des variables à partir de la forêt aléatoire, nous venons retirer les variables qui sont fortement corrélées. En effet, l'importance des variables peut être affecté par la multicolinéarité. Dans l'article _Correlation and variable importance in random forests_^[Idem], on y souligne le risque dans un contexte de multicolinéarité d'obtenir des résultats d'importance des variables instables : une petite modification du jeu d'entraînement peut entraîner une changement complet des variables dites importantes. Dans notre jeu de données, certaines variables sont très corrélées. Nous avons, notamment, des mesures qui ont été prises à différents endroits du bassin versant qui ont pratiquement les mêmes valeurs. Nous avons, également, la situation où nous avons des prises de mesure pour différents mois subséquents qui sont quasi-parfaitement corrélés. De ce fait, nous retirons certaines variables basé sur notre diagnostique de multicolinéarité.
+Avant de faire une présélection des variables à partir de la forêt aléatoire, nous venons retirer les variables qui sont fortement corrélées. En effet, l'importance des variables peut être affecté par la multicolinéarité. Dans l'article _Correlation and variable importance in random forests_^[Idem], on y souligne le risque dans un contexte de multicolinéarité d'obtenir des résultats d'importance des variables instables : une petite modification du jeu d'entraînement peut entraîner une changement complet des variables dites importantes. Dans notre jeu de données, certaines variables sont très corrélées. Nous avons, notamment, des mesures qui ont été prises à différents endroits du bassin versant qui ont pratiquement les mêmes valeurs. Nous avons, également, la situation où nous avons des prises de mesure pour différents mois subséquents qui sont quasi-parfaitement corrélés. De ce fait, nous retirons certaines variables basé sur un diagnostique de multicolinéarité. Les détails de ce diagnostique (chaque itération) se retrouve en annexe^[A.1 Diagnostique de multicolinéarité]. Ce diagnostique fait en sorte que nous retirons les variables suivantes : `r tolower(paste(translate_var(ind_cond$removed_vars), collapse = ", "))`.
 
 #### Forêt aléatoire 
 
-Il est à noter que cette étape de présélection avec une forêt aléatoire se fait sur le jeu d'entraînement seulement. En effet, comme il est mentionné, dans _Element of Statistical Learning_ (_ELS_)^[The elements of statistical learning : data mining, inference, and prediction, p. 245], l'objectif, dans une stratégie de validation, est d'avoir un jeu de données de test qui est indépendant du modèle que l'on entraîne. Or, si nous faisons la sélection des variables explicatives, sur l'ensemble de notre jeu de données, cette indépendance ne sera pas respectée puisque le modèle sera basé sur des variables explicatives qui ont été sélectionnées partiellement à partir du jeu de test. Par ailleurs, nous soulignons que l'ensemble des modèles construits pour faire la présélection sont évalués en terme de performance. En effet, même si un modèle entraîné n'a pas de bonnes performances, nous avons toujours quand même une importance des variables ou, dans le cas du modèle Lasso, des coefficients contractés à 0. De ce fait, avant de faire la sélection des variables, nous allons nous assurer que le modèle construit est un modèle qui est assez performant pour l'utiliser pour faire une sélection de variable. L'étape d'évaluation des modèles se fera sur notre jeu de données de validation.
-
-La forêt aléatoire entraînée pour la préselection a été construite à partir de la librairie R _ranger_ (pour avoir de détails sur la méthodologie, se réfèrer à l'annexe). L'importance des variables est obtenu à partir de la permutation des variables explicatives du jeu de données _Out of the Bag_ (OOB). Comme décrit dans _ELS_^[The elements of statistical learning : data mining, inference, and prediction, p. 593], l'idée générale est que, pour chaque arbre, nous avons un jeu de donnée laissé à part (OOB) que nous utilisons pour calculer, pour chaque variable explicatives, l'augmentation de l'erreur ou la diminution de l'exactitude entre les prédictions du jeu de données non-modifié et celles du jeu de données où nous permutons les valeurs de la variable évaluée. À chaque itération, en venant calculer l'impact sur un jeu de données indépendant des données vues par l'arbre entraîné, nous avons un portrait adéquat des variables importantes en généralisation, et non, importantes pour entraîner le modèle. Dans la librairie _ranger_, l'importance des variables est calculé à partir de la méthode décrite dans l'article _A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif_^[Janitza, S., Celik, E. & Boulesteix, A.-L., (2015). A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif doi: 10.1007/s116340160276- 4]. Mentionner ça : https://stats.stackexchange.com/questions/141619/wont-highly-correlated-variables-in-random-forest-distort-accuracy-and-feature
+La forêt aléatoire entraînée pour la préselection a été construite à partir de la librairie R _ranger_ (en annexe se retrouve les détails sur la méthodologie et les performances du modèle^[A.2 Forêt aléatoire ]). L'importance des variables est obtenu à partir de la permutation des variables explicatives du jeu de données _Out of the Bag_ (OOB). Comme décrit dans _ELS_^[The elements of statistical learning : data mining, inference, and prediction, p. 593], l'idée générale est que, pour chaque arbre, nous avons un jeu de donnée laissé à part (OOB) que nous utilisons pour calculer, pour chaque variable explicatives, l'augmentation de l'erreur ou la diminution de l'exactitude entre les prédictions du jeu de données non-modifié et celles du jeu de données où nous permutons les valeurs de la variable évaluée. À chaque itération, en venant calculer l'impact sur un jeu de données indépendant des données vues par l'arbre entraîné, nous avons un portrait adéquat des variables importantes en généralisation, et non, importantes pour entraîner le modèle. Dans la librairie _ranger_, l'importance des variables est calculé à partir de la méthode décrite dans l'article _A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif_^[Janitza, S., Celik, E. & Boulesteix, A.-L., (2015). A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif doi: 10.1007/s116340160276- 4]. Mentionner ça : https://stats.stackexchange.com/questions/141619/wont-highly-correlated-variables-in-random-forest-distort-accuracy-and-feature
 
 <span style="color:red">Quelle mesure de performance pour l'importance? Comment l'interpréter? À ajouter pour trouver les limites possibles</span>
-
-##### Méthodologie
-
-- Séparer le jeu de données en 3 parties
-- Validation croisée à 3 plis à partir du jeu d'entraînement pour optimiser les hyperparamètres (minimiser l'EQM) :
-
-   - Nombre de variables explicatives considérées à chaque embranchement (1, 8, 15)
-   - Nombre d'arbres (100, 300, 500)
-   - Minimum d'observations dans un noeud (100, 550, 1000)
-
-- Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation du modèle à partir du jeu de validation
-- Sélection des 25 variables les plus importantes
-
-##### Résultats
-
-Voici, l'EQM obtenu pour notre jeu de validation et, en comparaison, notre jeu d'entraînement :
-
-```{r}
-
-res <- data.table(
-   rmse_train = rf_model$rmse_train$.estimate[1],
-   rmse_val = rf_model$rmse_val[[1]]$.estimate[1]
-)
-
-res %>% 
-   kbl(
-      align = "c", 
-      digits = 2,
-      col.names = c("EQM (entr.)", "EQM (val.)"),
-      booktabs = TRUE, 
-      escape = FALSE
-   ) %>% 
-   kable_classic(
-      full_width = FALSE, 
-      html_font = "Cambria"
-   )
-
-```
-**Constats :** On voit que notre modèle ne semble pas être en surapprentissage. L'EQM est de `r round(rf_model$rmse_val[[1]]$.estimate[1], 2)` sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la valeur observée est  $\sqrt{EQM}$ = ~`r round(sqrt(rf_model$rmse_val[[1]]$.estimate[1]), 2)`. Pour se donner une idée de l'étendue de notre variable d'intérêt transformée :
-
-- Moyenne : `r round(mean(river_dt$dis_m3_pyr), 3)`
-- Écart-type : `r round(sd(river_dt$dis_m3_pyr), 3)`
-
 
 Nous affichons les `r (nb_var <- 25)` variables les plus importantes basée sur la méthode précédemment décrite :
 
@@ -172,8 +132,6 @@ rf_nb_vars <- length(which(rf_model$model$variable.importance > 5))
 
 
 ```
-
-**Constats :**
 
 Pour sélectionner les variables, plusieurs options s'offrent à nous. Nous pouvons sélectionner soient un nombre fixé de variables explicatives. Également, nous pouvons couper à partir d'un certain seuil d'importance de variable. Nous avons décidé de garder que les variables qui ont un niveau d'importance supérieur à 5 ce qui nous a mené à conserver `r rf_nb_vars` variables.
 
@@ -276,24 +234,15 @@ graph_pca(pca, components = c(2, 3), nb_var = nb_var)
 
 #### Modèle _Lasso_
 
-Un modèle _Lasso_ est une méthode de contraction des coefficients. Comparé au modèle linéaire, ce modèle se voit ajouter une contrainte, soit une valeur maximale totale qu'il peut attribuer à l'ensemble de ses coefficients. Les coefficients du modèle sont établis en minimisant l'erreur quadratique au travers les observations avec la contrainte que la somme des coefficients ne peut pas dépasser une certaine valeur :
+Nous utilisons un modèle _Lasso_ pour compléter notre sélection de variables. Le modèle _Lasso_, étant donné la contrainte sur la somme de ses coefficients, a l'avantage de venir de contracter certains coefficients à 0 et faire, par la bande, une sélection de variables. Par ailleurs, le modèle a l'avantage de gérer les situations où nous avons deux variables fortement corrélées. En effet, dans une régression normale avec deux variables très corrélées, l'un pourrait recevoir un coefficient positif élevé et l'autre un coefficient négatif pour capturer l'effet commun aux deux variables.^[he elements of statistical learning : data mining, inference, and prediction, p. 63]. Dans un modèle _Lasso_, le coefficient de l'une de ces 2 variables sera mis à 0 éliminant l'une des variables et gérant la situation de colinéarité. En annexe, nous décrivons plus en détail ce modèle, notre méthodologie pour entraîner le modèle et la performance de ce dernier.
 
-$$\underset{\vec{\beta}}{argmin}(\sum_{i=1}^N(y_i -\hat{y}_i)^2 + \lambda\sum_{j}^p|\beta_j|)$$
+Voici, le résulats de la validation croisée pour obtenir le $\lambda$ optimal pour minimiser l'EQM ainsi que les variables sélectionnés par le modèle avec un tel $\lambda$.
 
-Comme le démontre cette formule, plus la valeur de lambda est élevé, plus la contrainte est grande, et plus le nombre de coefficients qui risquent d'être contractés est élevé. Pour déterminer ce seul et unique hyperparamètre du modèle, nous effectuons une validation croisée sur le jeu d'entraînement. 
+<div style="display: flex; justify-content: center;">
 
-Le modèle a l'avantage de gérer les situations où nous avons deux variables fortement corrélées où, dans une régression normale, l'un pourrait recevoir un coefficient positif élevé et l'autre un coefficient négatif pour capturer l'effet commun aux deux variables^[he elements of statistical learning : data mining, inference, and prediction, p. 63].
+<div style="padding-right: 80px;">
 
-##### Méthodologie
-
-- Séparer le jeu de données en 3 parties
-- Validation croisée à 3 plis à partir du jeu d'entraînement pour optimiser le paramètre de pénalité $\lambda$ (minimiser l'EQM) : 25 valeurs entre $1 \times 10^{-10}$ et 1.
-- Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation du modèle à partir du jeu de validation
-- Sélection des variables basée sur le coefficient du modèle
-
-##### Résultats
-
-Voici, le résulats de la validation croisée pour obtenir le $\lambda$ optimal. 
+**Validation croisée**
 
 ```{r}
 
@@ -301,7 +250,145 @@ lasso_model$graph_cv
 
 ```
 
-**Constats :** Nous pouvons observer qu'en dessous d'une certaine valeur, nous obtenons toujours le même $\sqrt{EQM}$. Comme nous visions à sélectionner des variables avec ce modèle, nous avons pris le $\lambda$ le plus élevé au travers ceux qui minimise l'EQM (voir la ligne horizontale). Ainsi, nous avons sélectionné un $\lambda$ = `r lasso_model$model$spec$args$penalty`.
+</div>
+
+<div style="padding-right: 80px;">
+
+**Variables conservées**
+
+```{r}
+
+coefs <- coef(
+   object = lasso_model$model$fit, 
+   s = lasso_model$model$spec$args$penalty
+)
+
+vars <- translate_var(coefs@Dimnames[[1]][coefs@i + 1][-1])
+vars <- unique(gsub(":", "", sapply(vars, function(x) substr(x, 1, nchar(x) - 4))))
+
+lasso_nb_vars <- length(vars)
+
+vars %>% 
+   kbl(
+      align = "c", 
+      digits = 2,
+      col.names = "Variables conservées",
+      booktabs = TRUE, 
+      escape = FALSE
+   ) %>% 
+   kable_classic(
+      full_width = FALSE, 
+      html_font = "Cambria"
+   )
+
+```
+
+</div>
+
+</div>
+
+Nous pouvons observer qu'en dessous d'une certaine valeur, nous obtenons toujours le même $\sqrt{EQM}$. Comme nous visions à sélectionner des variables avec ce modèle, nous avons pris le $\lambda$ le plus élevé au travers ceux qui ont le plus faible EQM (voir la ligne horizontale). Ainsi, nous avons sélectionné un $\lambda$ = `r lasso_model$model$spec$args$penalty`. Avec ce dernier, nous passons, donc, de `r rf_nb_vars` variables à `r lasso_nb_vars`.
+
+# Analyse, discussion et conclusion (2-3 pages)
+
+- Performance des modèles
+- Enjeux éthiques
+- Recommandation du modèle? 
+
+# Annexe
+
+## A.1 Diagnostique de multicolinéarité
+
+Voici, un portrait des itérations faits pour éliminer certaines variables qui sont hautement corrélées. À chaque étape, nous retirons la variable qui a la plus grande valeur.
+
+- Itération 1
+
+```{r}
+table_ind_cond(ind_cond$ind_cond_1)
+```
+
+- Itération 2
+
+```{r}
+table_ind_cond(ind_cond$ind_cond_2)
+```
+
+- Itération 3
+
+```{r}
+table_ind_cond(ind_cond$ind_cond_3)
+```
+
+- Itération 4
+
+```{r}
+table_ind_cond(ind_cond$ind_cond_4)
+```
+
+Nous arrêtons les itérations, ici, car à partir de cette itération, nous n'avons plus de variable à retirer selon ce diagnostique.
+
+## A.2 Forêt aléatoire 
+
+- Méthodologie
+
+La méthodologie employée pour entraîner ce modèle est composée des étapes suivantes :
+
+1. Séparer le jeu de données en 3 parties
+2. Validation croisée à 3 plis à partir du jeu d'entraînement pour optimiser les hyperparamètres (dans le but de minimiser l'EQM) :
+
+   - Nombre de variables explicatives considérées à chaque embranchement (1, 8, 15)
+   - Nombre d'arbres (100, 300, 500)
+   - Minimum d'observations dans un noeud (100, 550, 1000)
+
+3. Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation du modèle à partir du jeu de validation
+
+- Performance du modèle
+
+L'EQM obtenu pour notre jeu de validation et, en comparaison, notre jeu d'entraînement :
+
+```{r}
+
+res <- data.table(
+   rmse_train = rf_model$rmse_train$.estimate[1],
+   rmse_val = rf_model$rmse_val[[1]]$.estimate[1]
+)
+
+res %>% 
+   kbl(
+      align = "c", 
+      digits = 2,
+      col.names = c("EQM (entr.)", "EQM (val.)"),
+      booktabs = TRUE, 
+      escape = FALSE
+   ) %>% 
+   kable_classic(
+      full_width = FALSE, 
+      html_font = "Cambria"
+   )
+
+```
+
+**Constats :** On voit que notre modèle ne semble pas être en surapprentissage. L'EQM est de `r round(rf_model$rmse_val[[1]]$.estimate[1], 2)` sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la valeur observée est  $\sqrt{EQM}$ = ~`r round(sqrt(rf_model$rmse_val[[1]]$.estimate[1]), 2)`. Pour se donner une idée de l'étendue de notre variable d'intérêt transformée :
+
+- Moyenne : `r round(mean(river_dt$dis_m3_pyr), 3)`
+- Écart-type : `r round(sd(river_dt$dis_m3_pyr), 3)`
+
+## A.3 Modèle _Lasso_
+
+Un modèle _Lasso_ est une méthode de contraction des coefficients. Comparé au modèle linéaire, ce modèle se voit ajouter une contrainte, soit une valeur maximale totale qu'il peut attribuer à l'ensemble de ses coefficients. Les coefficients du modèle sont établis en minimisant l'erreur quadratique au travers les observations avec la contrainte que la somme des coefficients ne peut pas dépasser une certaine valeur :
+
+$$\underset{\vec{\beta}}{argmin}(\sum_{i=1}^N(y_i -\hat{y}_i)^2 + \lambda\sum_{j}^p|\beta_j|)$$
+
+Comme le démontre cette formule, plus la valeur de lambda est élevé, plus la contrainte est grande, et plus le nombre de coefficients qui risquent d'être contractés à 0 est élevé. Pour déterminer ce seul et unique hyperparamètre du modèle, nous effectuons une validation croisée sur le jeu d'entraînement. 
+
+- Méthodologie
+
+1. Séparer le jeu de données en 3 parties
+2. Validation croisée à 3 plis à partir du jeu d'entraînement pour optimiser le paramètre de pénalité $\lambda$ (minimiser l'EQM) : 25 valeurs entre $1 \times 10^{-10}$ et 1.
+3. Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation du modèle à partir du jeu de validation
+
+- Résultats
+
 
 Voici, l'EQM obtenu pour notre jeu de validation et, en comparaison, celui avec basé sur le jeu d'entraînement :
 
@@ -328,41 +415,4 @@ res %>%
 ```
 **Constats :** L'EQM est de `r round(lasso_model$rmse_val[[1]]$.estimate[1], 2)` sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la valeur observée est  $\sqrt{EQM}$ = ~`r round(sqrt(lasso_model$rmse_val[[1]]$.estimate[1]), 2)`. On remarque que l'on a un EQM plus élevé qu'avec la forêt aléatoire.
 
-Voici, les variables qui ont été conservée, qui avait un coefficient supérieur à 0 dans le modèle _Lasso_ :
-
-```{r}
-
-coefs <- coef(
-   object = lasso_model$model$fit, 
-   s = lasso_model$model$spec$args$penalty
-)
-
-vars <- coefs@Dimnames[[1]][coefs@i + 1][-1]
-
-kbl(
-   x = translate_var(vars), 
-   align = "c", 
-   col.names = c("Variables"), 
-   booktabs = TRUE, 
-   escape = FALSE
-) %>% kable_classic(
-   full_width = FALSE, 
-   html_font = "Cambria"
-)
-
-# Nombre de variables
-lasso_nb_vars <- length(unique(substr(vars, 1, 6)))
-
-```
-
-Nous passons, donc, de `r rf_nb_vars` variables à `r lasso_nb_vars`.
-
-
-# Analyse, discussion et conclusion (2-3 pages)
-
-- Performance des modèles
-- Enjeux éthiques
-- Recommandation du modèle? 
-
-# Annexe
 

@@ -614,11 +614,12 @@ table_ind_cond <- function(ind_cond) {
          FUN = function(x) x > 0.6)
    )
    
-   if (!length(w)) {break}
-   
-   line <- line[, names(w), with = FALSE]
-   
-   names(line) <- translate_var(names(line))
+   if (length(w) - 1) {
+      line <- line[, names(w), with = FALSE]
+      
+      names(line) <- c(names(line)[1], translate_var(names(line)[2:length(names(line))]))
+      
+   }
    
    line %>% 
       kbl(
@@ -628,7 +629,7 @@ table_ind_cond <- function(ind_cond) {
          escape = FALSE
       ) %>% 
       kable_classic(
-         full_width = FALSE, 
+         full_width = TRUE, 
          html_font = "Cambria"
       )
 }

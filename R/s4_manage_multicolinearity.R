@@ -130,7 +130,14 @@ ini_dt <- ini_dt[, -removed_vars, with = FALSE]
 # Sauvegarder les objets résultants --------------------------------------------
 
 
-ind_cond <- list(ind_cond_1, ind_cond_2, ind_cond_3, ind_cond_4, ind_cond_5)
+ind_cond <- list(
+   ind_cond_1 = ind_cond_1, 
+   ind_cond_2 = ind_cond_2, 
+   ind_cond_3 = ind_cond_3, 
+   ind_cond_4 = ind_cond_4, 
+   ind_cond_5 = ind_cond_5, 
+   removed_vars = removed_vars
+)
 
 saveRDS(ind_cond, output_path_ind_cond, compress = "xz")
 
