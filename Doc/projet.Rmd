@@ -10,8 +10,6 @@ output:
 # Paramètres pour le .Rmd ------------------------------------------------------
 
 
-options(scipen = 100)
-
 knitr::opts_chunk$set(
    echo = FALSE,
    align = "c"
@@ -117,11 +115,11 @@ Par ailleurs, nous soulignons que l'ensemble des modèles construits pour faire 
 
 #### Diagnostique de multicolinéarité
 
-Avant de faire une présélection des variables à partir de la forêt aléatoire, nous venons retirer les variables qui sont fortement corrélées. En effet, l'importance des variables peut être affecté par la multicolinéarité. Dans l'article _Correlation and variable importance in random forests_^[Idem], on y souligne le risque dans un contexte de multicolinéarité d'obtenir des résultats d'importance des variables instables : une petite modification du jeu d'entraînement peut entraîner une changement complet des variables dites importantes. Dans notre jeu de données, certaines variables sont très corrélées. Nous avons, notamment, des mesures qui ont été prises à différents endroits du bassin versant qui ont pratiquement les mêmes valeurs. Nous avons, également, la situation où nous avons des prises de mesure pour différents mois subséquents qui sont quasi-parfaitement corrélés. De ce fait, nous retirons certaines variables basé sur un diagnostique de multicolinéarité. Les détails de ce diagnostique (chaque itération) se retrouve en annexe^[A.1 Diagnostique de multicolinéarité]. Ce diagnostique fait en sorte que nous retirons les variables suivantes : `r tolower(paste(translate_var(ind_cond$removed_vars, suffixe = FALSE), collapse = ", "))`.
+Avant de faire une présélection des variables à partir de la forêt aléatoire, nous venons retirer les variables qui sont fortement corrélées. En effet, l'importance des variables peut être affecté par la multicolinéarité. Dans l'article _Correlation and variable importance in random forests_^[Idem], on y souligne le risque dans un contexte de multicolinéarité d'obtenir des résultats d'importance des variables instables : une petite modification du jeu d'entraînement peut entraîner une changement complet des variables dites importantes. Dans notre jeu de données, certaines variables sont très corrélées. Nous avons, notamment, des mesures qui ont été prises à différents endroits du bassin versant qui ont pratiquement les mêmes valeurs. Nous avons, également, la situation où nous avons des prises de mesure pour différents mois subséquents qui sont quasi-parfaitement corrélés. De ce fait, nous retirons certaines variables basé sur un diagnostique de multicolinéarité. Les détails de ce diagnostique (chaque itération) se retrouve en [annexe](#multicolinearity). Ce diagnostique fait en sorte que nous retirons les variables suivantes : `r tolower(paste(translate_var(ind_cond$removed_vars, suffixe = FALSE), collapse = ", "))`.
 
 #### Forêt aléatoire 
 
-La forêt aléatoire entraînée pour la préselection a été construite à partir de la librairie R _ranger_ (en annexe se retrouve les détails sur la méthodologie et les performances du modèle^[A.2 Forêt aléatoire ]). L'importance des variables est obtenu à partir de la permutation des variables explicatives du jeu de données _Out of the Bag_ (OOB). Comme décrit dans _ELS_^[The elements of statistical learning : data mining, inference, and prediction, p. 593], l'idée générale est que, pour chaque arbre, nous avons un jeu de donnée laissé à part (OOB) que nous utilisons pour calculer, pour chaque variable explicatives, l'augmentation de l'erreur ou la diminution de l'exactitude entre les prédictions du jeu de données non-modifié et celles du jeu de données où nous permutons les valeurs de la variable évaluée. À chaque itération, en venant calculer l'impact sur un jeu de données indépendant des données vues par l'arbre entraîné, nous avons un portrait adéquat des variables importantes en généralisation, et non, importantes pour entraîner le modèle. Dans la librairie _ranger_, l'importance des variables est calculé à partir de la méthode décrite dans l'article _A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif_^[Janitza, S., Celik, E. & Boulesteix, A.-L., (2015). A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif doi: 10.1007/s116340160276- 4]. Mentionner ça : https://stats.stackexchange.com/questions/141619/wont-highly-correlated-variables-in-random-forest-distort-accuracy-and-feature
+La forêt aléatoire entraînée pour la préselection a été construite à partir de la librairie R _ranger_ (en [annexe](#random_forest) se retrouve les détails sur la méthodologie et les performances du modèl). L'importance des variables est obtenu à partir de la permutation des variables explicatives du jeu de données _Out of the Bag_ (OOB). Comme décrit dans _ELS_^[The elements of statistical learning : data mining, inference, and prediction, p. 593], l'idée générale est que, pour chaque arbre, nous avons un jeu de donnée laissé à part (OOB) que nous utilisons pour calculer, pour chaque variable explicatives, l'augmentation de l'erreur ou la diminution de l'exactitude entre les prédictions du jeu de données non-modifié et celles du jeu de données où nous permutons les valeurs de la variable évaluée. À chaque itération, en venant calculer l'impact sur un jeu de données indépendant des données vues par l'arbre entraîné, nous avons un portrait adéquat des variables importantes en généralisation, et non, importantes pour entraîner le modèle. Dans la librairie _ranger_, l'importance des variables est calculé à partir de la méthode décrite dans l'article _A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif_^[Janitza, S., Celik, E. & Boulesteix, A.-L., (2015). A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif doi: 10.1007/s116340160276- 4]. Mentionner ça : https://stats.stackexchange.com/questions/141619/wont-highly-correlated-variables-in-random-forest-distort-accuracy-and-feature
 
 <span style="color:red">Quelle mesure de performance pour l'importance? Comment l'interpréter? À ajouter pour trouver les limites possibles</span>
 
@@ -245,18 +243,18 @@ graph_pca(pca, components = c(2, 3), nb_var = nb_var)
 
 #### Arbre de décision
 
-Nous avons entraîné un arbre de décision pour sélectionner les interactions les plus importantes à tester. Pour ce faire, nous avons fixé l'arbre de décision a une profondeur de 5 pour que ça reste interprétable. Puis, nous avons optimisé le reste des hyperparamètres par validation croisée sur le jeu d'entraînement (pour plus de détails sur la méthodologie et les performances du modèle, voir la section en annexe^[A.3 Arbre de décision]). Nous voyons que l'arbre dans les premiers niveaux utilise très fréquement la variable `r translate_var("riv_tc", suffixe = FALSE)` et, dans les niveaux suivants, l'`r translate_var("ria_ha", suffixe = FALSE)` ressort souvent. Nous allons tester dans le modèle _Lasso_ l'interaction entre ces deux variables. Des interactions qui arrivent qu'une fois que nous allons tester, également, sont : 
+Nous avons entraîné un arbre de décision pour sélectionner les interactions les plus importantes à tester. Pour ce faire, nous avons fixé l'arbre de décision a une profondeur de 5 pour que ça reste interprétable. Puis, nous avons optimisé le reste des hyperparamètres par validation croisée sur le jeu d'entraînement (pour plus de détails sur la méthodologie et les performances du modèle, voir la section en [annexe](#decision_tree)). Nous voyons que l'arbre dans les premiers niveaux utilise très fréquement la variable `r translate_var("riv_tc", suffixe = FALSE)` et, dans les niveaux suivants, l'`r translate_var("ria_ha", suffixe = FALSE)` ressort souvent. Nous allons tester dans le modèle _Lasso_ l'interaction entre ces deux variables. Des interactions qui arrivent qu'une fois que nous allons tester, également, sont : 
 
 - `r translate_var("ria_ha", suffixe = FALSE)`  + `r translate_var("riv_cross_area", suffixe = FALSE)`
-- `r translate_var("ria_ha", suffixe = FALSE)`  + `r translate_var("riv_larg")`
+- `r translate_var("ria_ha", suffixe = FALSE)`  + `r translate_var("riv_larg", suffixe = FALSE)`
 
-Pour voir l'arbre obtenu, voir l'annexe^[A.3 Arbre de décision].
+Pour voir l'arbre obtenu, voir l'[annexe](#decision_tree).
 
 #### Modèle _Lasso_
 
-Nous utilisons un modèle _Lasso_ pour compléter notre sélection de variables. Ce modèle, étant donné la contrainte sur la somme de ses coefficients, a l'avantage de venir de contracter certains coefficients à 0 et faire, par ricochet, une sélection de variables. Par ailleurs, le modèle a l'avantage de gérer les situations où nous avons deux variables fortement corrélées. En effet, dans une régression normale avec deux variables très corrélées, l'un pourrait recevoir un coefficient positif élevé et l'autre un coefficient négatif pour capturer l'effet commun aux deux variables.^[he elements of statistical learning : data mining, inference, and prediction, p. 63]. Dans un modèle _Lasso_, le coefficient de l'une de ces 2 variables sera mis à 0 éliminant l'une des variables et gérant la situation de colinéarité. En annexe, nous décrivons plus en détail ce modèle, notre méthodologie pour entraîner le modèle et la performance de ce dernier^[A.4 Modèle _Lasso_].
+Nous utilisons un modèle _Lasso_ pour compléter notre sélection de variables. Ce modèle, étant donné la contrainte sur la somme de ses coefficients, a l'avantage de venir de contracter certains coefficients à 0 et faire, par ricochet, une sélection de variables. Par ailleurs, le modèle a l'avantage de gérer les situations où nous avons deux variables fortement corrélées. En effet, dans une régression normale avec deux variables très corrélées, l'un pourrait recevoir un coefficient positif élevé et l'autre un coefficient négatif pour capturer l'effet commun aux deux variables.^[he elements of statistical learning : data mining, inference, and prediction, p. 63]. Dans un modèle _Lasso_, le coefficient de l'une de ces 2 variables sera mis à 0 éliminant l'une des variables et gérant la situation de colinéarité. En [annexe](#lasso), nous décrivons plus en détail ce modèle, notre méthodologie pour entraîner le modèle et la performance de ce dernier.
 
-Avant de faire ce modèle, nous avons fait une modèle additif généralisé (_GAM_) pour ajouter au modèle _Lasso_ certaines transformations polynomiales. Le modèle Lasso a conservé 4 transformation polynomiales de degré 2 pour les variables  : `r tolower(paste(translate_var(lasso_model$var_poly), collapse = ", "))`. Pour plus de détails, se réfèrer à l'annexe^[A.4 Modèle _Lasso_]. De plus, le modèle a sélectionné l'interaction : `r translate_var("riv_tc", suffixe = FALSE)` x l'`r translate_var("ria_ha", suffixe = FALSE)`.
+Avant de faire ce modèle, nous avons fait une modèle additif généralisé (_GAM_) pour ajouter au modèle _Lasso_ certaines transformations polynomiales. Le modèle Lasso a conservé 4 transformation polynomiales de degré 2 pour les variables  : `r tolower(paste(translate_var(lasso_model$var_poly), collapse = ", "))`. Pour plus de détails, se réfèrer à l'[annexe](#lasso). De plus, le modèle a sélectionné l'interaction : `r translate_var("riv_tc", suffixe = FALSE)` x l'`r translate_var("ria_ha", suffixe = FALSE)`.
 
 Voici, le résulats de la validation croisée pour obtenir le $\lambda$ optimal pour minimiser l'EQM ainsi que les variables sélectionnés par le modèle avec un tel $\lambda$.
 
@@ -319,7 +317,7 @@ Nous pouvons observer qu'en dessous d'une certaine valeur, nous obtenons toujour
 
 # Annexe
 
-## A.1 Diagnostique de multicolinéarité
+## A.1 Diagnostique de multicolinéarité {#multicolinearity}
 
 Voici, un portrait des itérations faits pour éliminer certaines variables qui sont hautement corrélées. À chaque étape, nous retirons la variable qui a la plus grande valeur.
 
@@ -349,7 +347,7 @@ table_ind_cond(ind_cond$ind_cond_4)
 
 Nous arrêtons les itérations, ici, car à partir de cette itération, nous n'avons plus de variable à retirer selon ce diagnostique.
 
-## A.2 Forêt aléatoire 
+## A.2 Forêt aléatoire {#random_forest}
 
 - **Méthodologie**
 
@@ -395,7 +393,7 @@ res %>%
 - Moyenne : `r round(mean(river_dt$dis_m3_pyr), 3)`
 - Écart-type : `r round(sd(river_dt$dis_m3_pyr), 3)`
 
-## A.3 Arbre de décision
+## A.3 Arbre de décision {#decision_tree}
 
 - **Méthodologie**
 
@@ -443,7 +441,7 @@ res %>%
 
 **Constats :** On voit que notre modèle ne semble pas être en surapprentissage. L'EQM est de `r round(tree_model$rmse_val[[1]]$.estimate[1], 2)` sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la valeur observée est  $\sqrt{EQM}$ = ~`r round(sqrt(tree_model$rmse_val[[1]]$.estimate[1]), 2)`. On voit sans surprise que cette arbre de décision a surappris.
 
-## A.4 Modèle _Lasso_
+## A.4 Modèle _Lasso_ {#lasso}
 
 Un modèle _Lasso_ est une méthode de contraction des coefficients. Comparé au modèle linéaire, ce modèle se voit ajouter une contrainte, soit une valeur maximale totale qu'il peut attribuer à l'ensemble de ses coefficients. Les coefficients du modèle sont établis en minimisant l'erreur quadratique au travers les observations avec la contrainte que la somme des coefficients ne peut pas dépasser une certaine valeur :
 
