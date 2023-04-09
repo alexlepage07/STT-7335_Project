@@ -32,7 +32,8 @@ libs <- c("data.table",
           "glmnet",
           "moments",
           "MASS",
-          "datapasta")
+          "datapasta",
+          "gam")
 
 inst_load_packages(libs)
 
@@ -81,6 +82,73 @@ kurtosis(river_dt$dis_m3_pyr)
 # graph_qqplot(river_dt$dis_m3_pyr)
 # graph_density(river_dt, "dis_m3_pyr")
 
+# Sélection de transformation --------------------------------------------------
+
+vars_num <- names(
+   which(
+      sapply(
+         X = train_dt[, -c("HYRIV_ID",
+                           "NEXT_DOWN",
+                           "MAIN_RIV",
+                           "LENGTH_KM",
+                           "dis_m3_pyr")], 
+         FUN = function(x) is.numeric(x)
+      )
+   )
+)
+
+vars_nom<- names(
+   which(
+      sapply(
+         X = train_dt, 
+         FUN = function(x) !is.numeric(x)
+      )
+   )
+)
+
+f <- paste0("dis_m3_pyr ~ ",
+            paste(c(paste0("s(", vars_num, ")"), vars_nom), collapse = " + ")) 
+
+mod <- gam(formula = as.formula(f) , data = train_dt)
+
+terms <- labels.Gam(mod)
+
+# On regarde "à la main" les variables que ce seraient pertinents de faire 
+# une transformation 
+plot(mod, terms = terms[20])
+
+select_terms <- c(
+   # Degré 2
+   1, 
+   # Degré 2
+   7, 
+   # Degré 2
+   8,
+   # Degré 2
+   13,
+   # Degré 2
+   15,
+   # Degré 2
+   16,
+   # Degré 2
+   17,
+   # Degré 3
+   20,
+   # Degré 2
+   21,
+   # Degré 2
+   22)
+
+degrees <- rep(2, length(select_terms))
+degrees[8] <- 3
+
+f <- as.formula(
+   paste0(
+      "dis_m3_pyr ~ . + ",
+      paste(paste0("I", gsub("s|\\)", "", terms[select_terms]), "^", degrees, ")"), 
+            collapse =  " + ")
+   )
+)
 
 # Sélection des hyperparamètres ------------------------------------------------
 
@@ -109,7 +177,7 @@ train_folds <- vfold_cv(train_dt, v = 3)
 
 # Créer une recipe
 rec <- recipe(
-   dis_m3_pyr ~ ., 
+   formula = dis_m3_pyr ~ ., 
    data = train_dt
 ) %>% 
    step_rm(
@@ -117,6 +185,9 @@ rec <- recipe(
       "NEXT_DOWN",
       "MAIN_RIV",
       "LENGTH_KM"
+   ) %>% 
+   step_poly(
+      gsub("s\\(|\\)", "", terms[select_terms])
    ) %>% 
    step_dummy(
       all_nominal()
@@ -198,22 +269,26 @@ g <- lasso_res %>%
 
 coefs <- coef(final_model$fit, s = final_model$spec$args$penalty)
 
-vars <- coefs@Dimnames[[1]][-(coefs@i + 1)][-1]
+vars <- coefs@Dimnames[[1]][coefs@i][-1]
 
 # vector_paste_vertical(vars)
 
-river_dt <- river_dt[, c("lka_pc_use",
+river_dt <- river_dt[, c("ria_ha_csu",
                          "riv_tc_usu",
-                         "gwt_cm_cav",
+                         "swc_pc_cyr",
+                         "swc_pc_uyr",
+                         "riv_cross_area_csu",
+                         "riv_larg_csu",
+                         "lka_pc_cse",
+                         # Degrés 1 et 2
                          "slp_dg_uav",
                          "sgr_dk_rav",
-                         "snw_pc_cyr",
-                         "wet_pc_u01",
-                         "cly_pc_uav",
-                         "swc_pc_uyr",
-                         "kar_pc_cse",
-                         "riv_larg_csu",
-                         "pre_spring_max_csu",
+                         # Degré 2
+                         "wet_pc_c01",
+                         # Degrés 1 et 2
+                         "for_pc_use",
+                         # Degré 2
+                         "soc_th_uav",
                          "glc_cl_cmj",
                          "wet_cl_cmj",
                          "lit_cl_cmj",
@@ -246,7 +321,8 @@ info_ls <- list(
    rmse_val = final_fit$.metrics,
    rmse_train = rmse_train,
    model = final_model,
-   graph_cv = g
+   graph_cv = g,
+   var_poly = gsub("_poly_2", "", grep("poly_2", vars, value = TRUE))
 )
 
 saveRDS(info_ls, output_path_obj, compress = "xz")

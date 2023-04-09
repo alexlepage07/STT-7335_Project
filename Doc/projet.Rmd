@@ -102,7 +102,7 @@ Par ailleurs, bien que nous avons une dépendance spatiale entre les observation
 
 Comme mentionné, pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité ainsi que la multicolinéarité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. En faisant ainsi, cela nous permet d'obtenir un modèle final plus interprétable et de diminuer les risques de surapprentissage^[Gregorutti, B. & Michel, B & Saint-Pierre, P. (2017). Correlation and variable importance in random forests. Statistics and Computing, v27 n3 (201705): 659-678.]. 
 
-Pour ce faire, nous entraînons une forêt aléatoire pour faire une sélection de variables basée sur leur importance. Par la suite, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et, ainsi, nous défaire de la multicolinéarité. Puis, nous entraînons un modèle avec régularisation, soit un modèle de type _Lasso_, pour finaliser cette sélection de variables.
+Pour ce faire, nous entraînons une forêt aléatoire pour faire une sélection de variables basée sur leur importance. Par la suite, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et, ainsi, nous défaire de la multicolinéarité. Nous allons tenter de trouver des interactions à possiblement ajouter à notre modèle final en faisant une arbre de décision. Puis, nous entraînons un modèle avec régularisation, soit un modèle de type _Lasso_, pour finaliser cette sélection de variables.
 
 Il est à noter que les étapes de présélection de variables qui font appel à la variable d'intérêt se font sur les jeux d'entraînement et de validation seulement. En effet, comme il est mentionné, dans _Element of Statistical Learning_ (_ELS_)^[The elements of statistical learning : data mining, inference, and prediction, p. 245], l'objectif, dans une stratégie de validation, est d'avoir un jeu de données de test qui est indépendant du modèle que l'on entraîne. Or, si nous faisons la sélection des variables explicatives, sur l'ensemble de notre jeu de données, cette indépendance ne sera pas respectée puisque le modèle sera basé sur des variables explicatives qui ont été sélectionnées partiellement à partir du jeu de test. 
 
@@ -232,9 +232,13 @@ graph_pca(pca, components = c(2, 3), nb_var = nb_var)
 
 </div>
 
+#### Arbre de décision
+
 #### Modèle _Lasso_
 
 Nous utilisons un modèle _Lasso_ pour compléter notre sélection de variables. Ce modèle, étant donné la contrainte sur la somme de ses coefficients, a l'avantage de venir de contracter certains coefficients à 0 et faire, par ricochet, une sélection de variables. Par ailleurs, le modèle a l'avantage de gérer les situations où nous avons deux variables fortement corrélées. En effet, dans une régression normale avec deux variables très corrélées, l'un pourrait recevoir un coefficient positif élevé et l'autre un coefficient négatif pour capturer l'effet commun aux deux variables.^[he elements of statistical learning : data mining, inference, and prediction, p. 63]. Dans un modèle _Lasso_, le coefficient de l'une de ces 2 variables sera mis à 0 éliminant l'une des variables et gérant la situation de colinéarité. En annexe, nous décrivons plus en détail ce modèle, notre méthodologie pour entraîner le modèle et la performance de ce dernier^[A.3 Modèle _Lasso_].
+
+Avant de faire ce modèle, nous avons fait une modèle additif généralisé (_GAM_) pour ajouter au modèle _Lasso_ certaines transformations polynomiales. Le modèle Lasso a conservé 4 transformation polynomiales de degré 2 pour les variables  : `r tolower(paste(translate_var(lasso_model$var_poly), collapse = ", "))`. Pour plus de détails, se réfèrer à l'annexe^[A.3 Modèle _Lasso_].
 
 Voici, le résulats de la validation croisée pour obtenir le $\lambda$ optimal pour minimiser l'EQM ainsi que les variables sélectionnés par le modèle avec un tel $\lambda$.
 
@@ -287,7 +291,7 @@ vars %>%
 
 </div>
 
-Nous pouvons observer qu'en dessous d'une certaine valeur, nous obtenons toujours le même $\sqrt{EQM}$. Comme nous visions à sélectionner des variables avec ce modèle, nous avons pris le $\lambda$ le plus élevé au travers ceux qui ont le plus faible EQM (voir la ligne horizontale). Ainsi, nous avons sélectionné un $\lambda$ = `r lasso_model$model$spec$args$penalty`. Avec ce dernier, nous passons, donc, de `r rf_nb_vars` variables à `r lasso_nb_vars`.
+Nous pouvons observer qu'en dessous d'une certaine valeur, nous obtenons toujours le même $\sqrt{EQM}$. Comme nous visions à sélectionner des variables avec ce modèle, nous avons pris le $\lambda$ le plus élevé au travers ceux qui ont le plus faible EQM (voir la ligne verticale). Ainsi, nous avons sélectionné un $\lambda$ = `r lasso_model$model$spec$args$penalty`. Avec ce dernier, nous passons, donc, de `r rf_nb_vars` variables à `r lasso_nb_vars`.
 
 # Analyse, discussion et conclusion (2-3 pages)
 
@@ -356,7 +360,7 @@ res <- data.table(
 res %>% 
    kbl(
       align = "c", 
-      digits = 2,
+      digits = 3,
       col.names = c("EQM (entr.)", "EQM (val.)"),
       booktabs = TRUE, 
       escape = FALSE
@@ -384,8 +388,9 @@ Comme le démontre cette formule, plus la valeur de lambda est élevé, plus la 
 - Méthodologie
 
 1. Séparer le jeu de données en 3 parties
-2. Validation croisée à 3 plis à partir du jeu d'entraînement pour optimiser le paramètre de pénalité $\lambda$ (minimiser l'EQM) : 25 valeurs entre $1 \times 10^{-10}$ et 1.
-3. Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation du modèle à partir du jeu de validation
+2. Sélectionner à partir d'un modèle additif généralisé des transformations possibles
+3. Validation croisée à 3 plis à partir du jeu d'entraînement pour optimiser le paramètre de pénalité $\lambda$ (minimiser l'EQM) : 25 valeurs entre $1 \times 10^{-10}$ et 1.
+4. Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation du modèle à partir du jeu de validation
 
 - Résultats
 
@@ -402,7 +407,7 @@ res <- data.table(
 res %>% 
    kbl(
       align = "c", 
-      digits = 2,
+      digits = 3,
       col.names = c("EQM (entr.)", "EQM (val.)"),
       booktabs = TRUE, 
       escape = FALSE
@@ -413,6 +418,6 @@ res %>%
    )
 
 ```
-**Constats :** L'EQM est de `r round(lasso_model$rmse_val[[1]]$.estimate[1], 2)` sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la valeur observée est  $\sqrt{EQM}$ = ~`r round(sqrt(lasso_model$rmse_val[[1]]$.estimate[1]), 2)`. On remarque que l'on a un EQM plus élevé qu'avec la forêt aléatoire.
+**Constats :** L'EQM est de `r round(lasso_model$rmse_val[[1]]$.estimate[1], 2)` sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la valeur observée est  $\sqrt{EQM}$ = ~`r round(sqrt(lasso_model$rmse_val[[1]]$.estimate[1]), 2)`. On remarque que l'on a un EQM plus élevé qu'avec la forêt aléatoire. Toutefois, rappelons que bien que le modèle que nous allons proposer est peut-être moins performant, le modèle est beaucoup plus interprétable.
 
 

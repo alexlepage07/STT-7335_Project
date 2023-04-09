@@ -1,8 +1,7 @@
-# s5_random_forest.R
+# s6_decision_tree.R
 
 
-# Un fichier dédié à sélectionner les variables importantes à partir d'un forêt
-# aléatoire.
+# Un fichier dédié à trouver des interactions possibles
 
 
 # Université Laval
@@ -17,6 +16,8 @@
 
 # Développeur: Andréa Hangsin (andrea.hangsin.1@ulaval.ca)
 
+# Source : https://juliasilge.com/blog/lasso-the-office/
+
 # Fonctions --------------------------------------------------------------------
 
 
@@ -27,9 +28,9 @@ source("./R/utils.R")
 
 
 libs <- c("data.table",
-          "ranger",
           "tidymodels",
-          "vip")
+          "rpart",
+          "rpart.plot")
 
 inst_load_packages(libs)
 
@@ -37,9 +38,8 @@ inst_load_packages(libs)
 # Chemins d'accès --------------------------------------------------------------
 
 
-input_path <- "Data/s4_donnees_sans_multicol.rds"
-output_path <- "Data/s5_donnees_rf_var_sel.rds"
-output_path_obj <- "inst/s5_random_forest.rds"
+input_path <- "Data/s5_donnees_rf_var_sel.rds"
+output_path_obj <- "inst/s6_decision_tree.rds"
 
 
 # Charger le jeu de données ----------------------------------------------------
@@ -49,12 +49,12 @@ river_dt <- readRDS(input_path)
 stopifnot("data.table" %in% class(river_dt))
 
 
-# Séparer le jeu de données ----------------------------------------------------
+# Séparer le jeu ---------------------------------------------------------------
 
 
 set.seed(7335)
 split_dt <- initial_split(river_dt, prop = 0.85)
-train_dt <- training(split_dt)
+train_dt <- training(split_dt) 
 split_train_dt <- initial_split(train_dt, prop = 1 - 0.15/0.85)
 train_dt <- training(split_train_dt)
 val_dt  <- testing(split_train_dt)
@@ -65,24 +65,23 @@ test_dt  <- testing(split_dt)
 
 
 # Initialiser notre modèle
-tune_spec <- rand_forest(
-   mtry = tune(),
-   trees = tune(),
+tune_spec <- decision_tree(
+   # Nous fixons à 5 pour que ce soit relativement interprétable et possible
+   # de sélectionner des interactions possibles.
+   tree_depth = 5,
+   cost_complexity = tune(),
    min_n = tune()
 ) %>% 
    set_engine(
-      engine = "ranger",
-      importance = "permutation",
-      scale.permutation.importance = TRUE
+      engine = "rpart"
    ) %>% 
    set_mode(
       mode = "regression"
    )
 
-# Établir les combinaisons d'hyperparamètres à tester 
-forest_grid <- grid_regular(
-   mtry(range = c(1L, 15L)),
-   trees(range = c(100L, 500L)),
+# Établir les valeurs de pénalités à tester
+tree_grid <- grid_regular(
+   cost_complexity(),
    min_n(range = c(100L, 1000L))
 )
 
@@ -90,7 +89,7 @@ forest_grid <- grid_regular(
 train_folds <- vfold_cv(train_dt, v = 3)
 
 # Créer le workflow
-forest_wf <- workflow() %>%
+tree_wf <- workflow() %>%
    add_model(
       spec = tune_spec
    ) %>%
@@ -99,24 +98,25 @@ forest_wf <- workflow() %>%
    )
 
 # Faire la validation croisée
-forest_res <-   
-   forest_wf %>% 
+tree_res <-   
+   tree_wf %>% 
    tune_grid(
       resamples = train_folds,
-      grid = forest_grid
+      grid = tree_grid
    )
+
 
 # Modèle final -----------------------------------------------------------------
 
 # Sélectionner le meilleur modèle basé sur la mesure de performance choisie
-best_forest <- forest_res %>%
+best_tree <- tree_res %>%
    select_best(metric = "rmse")
 
 # Mettre à jour le workflow avec les hyperparamètres venant maximiser la 
 # métrique de performance visée
-final_wf <- forest_wf %>% 
+final_wf <- tree_wf %>% 
    finalize_workflow(
-      best_forest
+      best_tree
    )
 
 # Faire le dernier entraînement
@@ -133,37 +133,4 @@ final_model <-
 rmse_train <- final_model %>% 
    augment(training(split_train_dt)) %>% 
    rmse(dis_m3_pyr, .pred)
-
-# Retrait de variables ---------------------------------------------------------
-
-w <- which(final_model$fitvariable.importance > 5)
-
-vars <- names(final_model$fit$variable.importance[w])
-
-river_dt <- river_dt[, c(vars,
-                         "HYRIV_ID",
-                         "NEXT_DOWN",
-                         "MAIN_RIV",
-                         "LENGTH_KM",
-                         "dis_m3_pyr"), with = FALSE]
-
-
-# Sauvegarder les données résultantes ------------------------------------------
-
-
-saveRDS(river_dt, output_path, compress = "xz")
-
-
-# Sauvegarder le informations pertinentes --------------------------------------
-
-info_ls <- list(
-   rmse_val = final_fit$.metrics,
-   rmse_train = rmse_train,
-   model = final_model
-)
-
-saveRDS(info_ls, output_path_obj, compress = "xz")
-
-
-
 
