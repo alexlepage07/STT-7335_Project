@@ -113,8 +113,8 @@ mod <- gam(formula = as.formula(f) , data = train_dt)
 
 terms <- labels.Gam(mod)
 
-# On regarde "à la main" les variables que ce seraient pertinents de faire 
-# une transformation 
+# On regarde "à la main" les variables qui seraient peut-être pertinents 
+# d'effectuer une transformation
 plot(mod, terms = terms[20])
 
 select_terms <- c(
@@ -191,7 +191,12 @@ rec <- recipe(
    ) %>% 
    step_dummy(
       all_nominal()
-   ) 
+   ) %>% 
+   step_interact(
+      terms = ~ riv_tc_usu:ria_ha_csu +  
+         ria_ha_csu:riv_cross_area_csu +
+         riv_tc_usu:riv_larg_csu
+   )
 
 # Créer le workflow
 lasso_wf <- workflow() %>%
@@ -269,34 +274,32 @@ g <- lasso_res %>%
 
 coefs <- coef(final_model$fit, s = final_model$spec$args$penalty)
 
-vars <- coefs@Dimnames[[1]][coefs@i][-1]
+vars <- coefs@Dimnames[[1]][coefs@i + 1][-1]
 
 # vector_paste_vertical(vars)
 
-river_dt <- river_dt[, c("ria_ha_csu",
+river_dt <- river_dt[, c("lka_pc_use",
+                         "ria_ha_csu",
                          "riv_tc_usu",
-                         "swc_pc_cyr",
+                         "gwt_cm_cav",
+                         "slp_dg_cav",
                          "swc_pc_uyr",
-                         "riv_cross_area_csu",
+                         "kar_pc_cse",
                          "riv_larg_csu",
-                         "lka_pc_cse",
-                         # Degrés 1 et 2
+                         "pre_spring_max_csu",
+                         # Degré 2
                          "slp_dg_uav",
-                         "sgr_dk_rav",
-                         # Degré 2
-                         "wet_pc_c01",
                          # Degrés 1 et 2
-                         "for_pc_use",
+                         "sgr_dk_rav",
+                         "wet_pc_u01",
                          # Degré 2
-                         "soc_th_uav",
+                         "for_pc_use",
+                         "cly_pc_uav",
                          "glc_cl_cmj",
                          "wet_cl_cmj",
                          "lit_cl_cmj",
-                         "HYRIV_ID",
-                         "NEXT_DOWN",
-                         "MAIN_RIV",
-                         "LENGTH_KM",
-                         "dis_m3_pyr"), with = FALSE]
+                         # ria_ha_csu x riv_tc_usu
+                         ), with = FALSE]
 
 
 # Comparaison prédit/observés --------------------------------------------------

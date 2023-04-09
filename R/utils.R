@@ -173,7 +173,7 @@ graph_density <-
 # noms des axes des graphiques)
 
 
-translate_var <- function(vars) {
+translate_var <- function(vars, suffixe = TRUE) {
    
    # À compléter
    map <- list(
@@ -205,7 +205,8 @@ translate_var <- function(vars) {
       snow_p = "Précipitation de neige",
       kar_pc = "Proportion de Karst (une roche sédimentaire se déformant sous l'effet de l'érosion)",
       glc_cl = "Classification du terrain (forêt, ville, champs, etc.)",
-      pre_sp = "Précipitations printanières maximales (en mm)"
+      pre_sp = "Précipitations printanières maximales (en mm)",
+      riv_lar = "Largeur de la rivière"
    )
    
    translation <- vapply(
@@ -220,11 +221,13 @@ translate_var <- function(vars) {
       character(1L)
    ) %>% unname()
    
-   translation <- paste0(
-      translation, 
-      " : ",
-      gsub("_", "", substr(vars, nchar(vars) - 2, nchar(vars)))
-   )
+   if (suffixe) {
+      translation <- paste0(
+         translation, 
+         " : ",
+         gsub("_", "", substr(vars, nchar(vars) - 2, nchar(vars)))
+      )
+   }
    
    translation
    
@@ -737,7 +740,6 @@ graph_normalite_res <- function(res) {
       stat_qq() + 
       stat_qq_line() +
       labs(
-         title = "Droite d'Henry",
            x = "Quantiles théoriques",
            y = "Quantiles observés"
       )  + 

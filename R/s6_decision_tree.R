@@ -137,3 +137,13 @@ rmse_train <- final_model %>%
    augment(training(split_train_dt)) %>% 
    rmse(dis_m3_pyr, .pred)
 
+# Sauvegarder le modèle résultant ----------------------------------------------
+
+info_ls <- list(
+   rmse_val = final_fit$.metrics,
+   rmse_train = rmse_train,
+   model = final_model # rpart.plot::rpart.plot(final_model$fit, roundint = FALSE)
+)
+
+saveRDS(info_ls, output_path_obj, compress = "xz")
+

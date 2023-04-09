@@ -26,10 +26,12 @@ path_fct <- "../R"
 
 # Charger les objets -----------------------------------------------------------
 
+
 ind_cond <- readRDS(file.path(path_obj, "s4_ind_cond.rds"))
 rf_model <- readRDS(file.path(path_obj, "s5_random_forest.rds"))
 pca <- readRDS(file.path(path_obj, "s6_pca.rds"))
 lasso_model <- readRDS(file.path(path_obj, "s7_lasso.rds"))
+tree_model <- readRDS(file.path(path_obj, "s6_decision_tree.rds"))
 
 river_dt <- readRDS(file.path(path_data, "s3_donnees_standardisees.rds"))
 
@@ -44,9 +46,12 @@ source(file.path(path_fct, "utils.R"))
 
 
 libs <- c("data.table",
-          "glmnet")
+          "glmnet",
+          "rpart.plot")
 
 inst_load_packages(libs)
+
+
 ```
 
 # Contexte et objectifs (1/2 page)
@@ -140,9 +145,13 @@ Pour sélectionner les variables, plusieurs options s'offrent à nous. Nous pouv
 Nous faisons, donc, une analyse des composantes principales avec la fonction `PCA` de la librairie `FactoMineR`. Celle-ci standardise, par défaut, nos variables. <span style="color:red"> Pourquoi on a nous-même standardisée? </span> L'objectif de cette analyse des composantes principales est d'orthogonaliser nos variables pour ensuite les utiliser comme variables explicatives pour le modèle mixte. Nous faisons l'analyse des composantes principales sur l'ensemble du jeu de données comme cette procédure ne fait pas appel à la variable d'intérêt.
 
 ```{r}
+
+
 eig_dt <- as.data.table(pca$eig, keep.rownames = TRUE)
 names(eig_dt) <- c("comp", "eigenvalue", "pourc_var", "cum_pouc_var")
 w <- which(eig_dt[order(cum_pouc_var)][["cum_pouc_var"]] > 80)
+
+
 ```
 
 Nous choisissons le nombre de composantes que nous conservons. Pour ce, nous appliquons la règle du 80%, la règle de _Joliffe_ ainsi que celle de _Cattell_ :
@@ -234,11 +243,18 @@ graph_pca(pca, components = c(2, 3), nb_var = nb_var)
 
 #### Arbre de décision
 
+Nous avons entraîné un arbre de décision pour sélectionner les interactions les plus importantes à tester. Pour ce faire, nous avons fixé l'arbre de décision a une profondeur de 5 pour que ça reste interprétable. Puis, nous avons optimisé le reste des hyperparamètres par validation croisée sur le jeu d'entraînement (pour plus de détails sur la méthodologie et les performances du modèle, voir la section en annexe^[A.3 Arbre de décision]). Nous voyons que l'arbre dans les premiers niveaux utilise très fréquement la variable "`r translate_var("riv_tc", suffixe = FALSE)`" et, dans les niveaux suivants, l'"`r translate_var("ria_ha", suffixe = FALSE)`" ressort souvent. Nous allons tester dans le modèle _Lasso_ l'interaction entre ces deux variables. Des interactions qui arrivent qu'une fois que nous allons tester, également, sont : 
+
+- `r translate_var("ria_ha", suffixe = FALSE)`  + `r translate_var("riv_cross_area", suffixe = FALSE)`
+- `r translate_var("ria_ha", suffixe = FALSE)`  + `r translate_var("riv_larg")`
+
+Pour voir l'arbre obtenu, voir l'annexe^[A.3 Arbre de décision].
+
 #### Modèle _Lasso_
 
-Nous utilisons un modèle _Lasso_ pour compléter notre sélection de variables. Ce modèle, étant donné la contrainte sur la somme de ses coefficients, a l'avantage de venir de contracter certains coefficients à 0 et faire, par ricochet, une sélection de variables. Par ailleurs, le modèle a l'avantage de gérer les situations où nous avons deux variables fortement corrélées. En effet, dans une régression normale avec deux variables très corrélées, l'un pourrait recevoir un coefficient positif élevé et l'autre un coefficient négatif pour capturer l'effet commun aux deux variables.^[he elements of statistical learning : data mining, inference, and prediction, p. 63]. Dans un modèle _Lasso_, le coefficient de l'une de ces 2 variables sera mis à 0 éliminant l'une des variables et gérant la situation de colinéarité. En annexe, nous décrivons plus en détail ce modèle, notre méthodologie pour entraîner le modèle et la performance de ce dernier^[A.3 Modèle _Lasso_].
+Nous utilisons un modèle _Lasso_ pour compléter notre sélection de variables. Ce modèle, étant donné la contrainte sur la somme de ses coefficients, a l'avantage de venir de contracter certains coefficients à 0 et faire, par ricochet, une sélection de variables. Par ailleurs, le modèle a l'avantage de gérer les situations où nous avons deux variables fortement corrélées. En effet, dans une régression normale avec deux variables très corrélées, l'un pourrait recevoir un coefficient positif élevé et l'autre un coefficient négatif pour capturer l'effet commun aux deux variables.^[he elements of statistical learning : data mining, inference, and prediction, p. 63]. Dans un modèle _Lasso_, le coefficient de l'une de ces 2 variables sera mis à 0 éliminant l'une des variables et gérant la situation de colinéarité. En annexe, nous décrivons plus en détail ce modèle, notre méthodologie pour entraîner le modèle et la performance de ce dernier^[A.4 Modèle _Lasso_].
 
-Avant de faire ce modèle, nous avons fait une modèle additif généralisé (_GAM_) pour ajouter au modèle _Lasso_ certaines transformations polynomiales. Le modèle Lasso a conservé 4 transformation polynomiales de degré 2 pour les variables  : `r tolower(paste(translate_var(lasso_model$var_poly), collapse = ", "))`. Pour plus de détails, se réfèrer à l'annexe^[A.3 Modèle _Lasso_].
+Avant de faire ce modèle, nous avons fait une modèle additif généralisé (_GAM_) pour ajouter au modèle _Lasso_ certaines transformations polynomiales. Le modèle Lasso a conservé 4 transformation polynomiales de degré 2 pour les variables  : `r tolower(paste(translate_var(lasso_model$var_poly), collapse = ", "))`. Pour plus de détails, se réfèrer à l'annexe^[A.4 Modèle _Lasso_].
 
 Voici, le résulats de la validation croisée pour obtenir le $\lambda$ optimal pour minimiser l'EQM ainsi que les variables sélectionnés par le modèle avec un tel $\lambda$.
 
@@ -333,7 +349,7 @@ Nous arrêtons les itérations, ici, car à partir de cette itération, nous n'a
 
 ## A.2 Forêt aléatoire 
 
-- Méthodologie
+- **Méthodologie**
 
 La méthodologie employée pour entraîner ce modèle est composée des étapes suivantes :
 
@@ -346,7 +362,7 @@ La méthodologie employée pour entraîner ce modèle est composée des étapes 
 
 3. Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation du modèle à partir du jeu de validation
 
-- Performance du modèle
+- **Performance du modèle**
 
 L'EQM obtenu pour notre jeu de validation et, en comparaison, notre jeu d'entraînement :
 
@@ -377,7 +393,29 @@ res %>%
 - Moyenne : `r round(mean(river_dt$dis_m3_pyr), 3)`
 - Écart-type : `r round(sd(river_dt$dis_m3_pyr), 3)`
 
-## A.3 Modèle _Lasso_
+## A.3 Arbre de décision
+
+- **Méthodologie**
+
+1. Séparer le jeu de données en 3 parties
+2. Validation croisée à 3 plis à partir du jeu d'entraînement pour optimiser les paramètres (le paramètre de profondeur est fixé à 5) :
+
+   - Coût de complexité (0.0000000001, 0.00000316 et 0.1)
+   - Minimum d'observations dans un noeud (100, 550, 1000)
+   
+3. Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation du modèle à partir du jeu de validation
+
+- **Résultats**
+
+Nous obtenons l'arbre suivant :
+
+```{r}
+
+rpart.plot::rpart.plot(tree_model$model$fit, roundint = FALSE)
+
+```
+
+## A.4 Modèle _Lasso_
 
 Un modèle _Lasso_ est une méthode de contraction des coefficients. Comparé au modèle linéaire, ce modèle se voit ajouter une contrainte, soit une valeur maximale totale qu'il peut attribuer à l'ensemble de ses coefficients. Les coefficients du modèle sont établis en minimisant l'erreur quadratique au travers les observations avec la contrainte que la somme des coefficients ne peut pas dépasser une certaine valeur :
 
@@ -385,14 +423,14 @@ $$\underset{\vec{\beta}}{argmin}(\sum_{i=1}^N(y_i -\hat{y}_i)^2 + \lambda\sum_{j
 
 Comme le démontre cette formule, plus la valeur de lambda est élevé, plus la contrainte est grande, et plus le nombre de coefficients qui risquent d'être contractés à 0 est élevé. Pour déterminer ce seul et unique hyperparamètre du modèle, nous effectuons une validation croisée sur le jeu d'entraînement. 
 
-- Méthodologie
+- **Méthodologie**
 
 1. Séparer le jeu de données en 3 parties
 2. Sélectionner à partir d'un modèle additif généralisé des transformations possibles
 3. Validation croisée à 3 plis à partir du jeu d'entraînement pour optimiser le paramètre de pénalité $\lambda$ (minimiser l'EQM) : 25 valeurs entre $1 \times 10^{-10}$ et 1.
 4. Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation du modèle à partir du jeu de validation
 
-- Résultats
+- **Résultats**
 
 Avant de regarder les résultats, nous validons les hypothèses qui sous-tendent le modèle soit : l'hypothèse de linéarité, l'hypothèse d'homoscédasticité, l'hypothèse de non-corrélation et l'hypothèse de normalité des résidus. Évidemment, sachant qu'il y a de la dépendance spatiale entre certaines rivières, nous nous attendons que l'hypothèse d'homoscédasticité et de non-corrélation ne soient pas respectées.
 
@@ -400,7 +438,7 @@ Avant de regarder les résultats, nous validons les hypothèses qui sous-tendent
 
 <div style="padding-right: 80px;">
 
-**Hypothèse de linéarité et d'homoscédasticit**
+**Hypothèses de linéarité et d'homoscédasticité**
 
 ```{r}
 
