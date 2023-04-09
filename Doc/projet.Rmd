@@ -394,6 +394,47 @@ Comme le démontre cette formule, plus la valeur de lambda est élevé, plus la 
 
 - Résultats
 
+Avant de regarder les résultats, nous validons les hypothèses qui sous-tendent le modèle soit : l'hypothèse de linéarité, l'hypothèse d'homoscédasticité, l'hypothèse de non-corrélation et l'hypothèse de normalité des résidus. Évidemment, sachant qu'il y a de la dépendance spatiale entre certaines rivières, nous nous attendons que l'hypothèse d'homoscédasticité et de non-corrélation ne soient pas respectées.
+
+<div style="display: flex; justify-content: center;">
+
+<div style="padding-right: 80px;">
+
+**Hypothèse de linéarité et d'homoscédasticit**
+
+```{r}
+
+lasso_model$graphs_res$res_vs_pred
+
+```
+
+</div>
+
+<div style="padding-right: 80px;">
+
+**Hypothèse de non-corrélation**
+
+```{r}
+
+lasso_model$graphs_res$res_vs_etiq
+
+```
+
+</div>
+
+<div style="padding-right: 80px;">
+
+**Hypothèse de normalité des résidus**
+
+```{r}
+
+lasso_model$graphs_res$res_qqplot
+
+```
+
+</div>
+
+</div>
 
 Voici, l'EQM obtenu pour notre jeu de validation et, en comparaison, celui avec basé sur le jeu d'entraînement :
 

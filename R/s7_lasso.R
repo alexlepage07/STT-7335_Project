@@ -309,6 +309,24 @@ graph_pred_by_var(
    nm_var = "for_pc_use"
 )
 
+
+# Analyse des résidus ----------------------------------------------------------
+
+pred <- final_wf %>%
+   fit(train_dt) %>% 
+   predict(train_dt)
+
+pred <- pred$.pred
+
+res <- train_dt$dis_m3_pyr - pred
+
+graphs_res <- list(
+   res_vs_pred = graph_res_vs_pred(res, pred),
+   res_vs_etiq = graph_res_vs_etiquette(res, train_dt$MAIN_RIV),
+   res_qqplot = graph_normalite_res(res)
+)
+
+
 # Sauvegarder les données résultantes ------------------------------------------
 
 
@@ -322,7 +340,8 @@ info_ls <- list(
    rmse_train = rmse_train,
    model = final_model,
    graph_cv = g,
-   var_poly = gsub("_poly_2", "", grep("poly_2", vars, value = TRUE))
+   var_poly = gsub("_poly_2", "", grep("poly_2", vars, value = TRUE)),
+   graphs_res = graphs_res
 )
 
 saveRDS(info_ls, output_path_obj, compress = "xz")

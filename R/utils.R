@@ -686,3 +686,64 @@ graph_pred_by_var <- function(pred, obs, var, nm_var) {
    
 }
 
+
+# Graphique des résidus en fonction des prédictions
+
+graph_res_vs_pred <- function(res, pred) {
+   
+   ggplot() +
+      geom_point(
+         mapping = aes(x = pred, y = res)
+      ) +
+      labs(
+         x = "Prédictions",
+         y = "Résidus"
+      )  + 
+      theme(
+         text = element_text(family = "Times New Roman")
+      )
+   
+}
+
+# Graphique des résidus en fonction des prédictions
+
+graph_res_vs_etiquette <- function(res, etiquette = NULL) {
+   
+   if(is.null(etiquette)) {
+      etiquette <- 1:length(res)
+   }
+   
+   ggplot() +
+      geom_point(
+         mapping = aes(x = etiquette, y = res)
+      ) +
+      labs(
+         x = "Étiquette",
+         y = "Résidus"
+      )  + 
+      theme(
+         text = element_text(family = "Times New Roman")
+      )
+   
+}
+
+# Graphique pour évaluer la normalité des résidus
+
+graph_normalite_res <- function(res) {
+   
+   ggplot(
+      mapping = aes(sample = res)
+      ) + 
+      stat_qq() + 
+      stat_qq_line() +
+      labs(
+         title = "Droite d'Henry",
+           x = "Quantiles théoriques",
+           y = "Quantiles observés"
+      )  + 
+      theme(
+         text = element_text(family = "Times New Roman")
+      )
+   
+}
+

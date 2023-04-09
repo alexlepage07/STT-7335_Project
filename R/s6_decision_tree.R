@@ -124,10 +124,13 @@ final_fit <-
    final_wf %>%
    last_fit(split_train_dt)
 
-# Obtenir l'importance des variables
+# Obtenir le modèle final
 final_model <- 
    final_fit %>%
    extract_fit_parsnip()
+
+# Afficher l'arbre
+g <- rpart.plot::rpart.plot(final_model$fit, roundint = FALSE)
 
 # Obtenir le rmse sur le jeu d'entraînement
 rmse_train <- final_model %>% 
