@@ -28,7 +28,7 @@ source("./R/utils.R")
 
 
 libs <- c("data.table",
-          "tidymodels")
+          "lme4")
 
 inst_load_packages(libs)
 
@@ -57,4 +57,14 @@ split_train_dt <- initial_split(train_dt, prop = 1 - 0.15/0.85)
 train_dt <- training(split_train_dt)
 val_dt  <- testing(split_train_dt)
 test_dt  <- testing(split_dt)
+
+# Modèle -----------------------------------------------------------------------
+
+lmm <- lmer(
+   dis_m3_pyr ~ . + riv_tc_usu:ria_ha_csu + (1 | MAIN_RIV),
+   data = train_dt[, -c("HYRIV_ID", 
+                        "NEXT_DOWN",
+                        "LENGTH_KM")],
+   REML = TRUE
+)
 
