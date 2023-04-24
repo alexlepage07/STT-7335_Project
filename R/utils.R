@@ -20,17 +20,34 @@
 
 # Librairies -------------------------------------------------------------------
 
+# Fonction pour installer, au besoin, une ou plusieurs librairies, pour ensuite
+# les télécharger
 
-lib <- c("data.table",
-         "ggplot2",
-         "terra",
-         "tidyverse",
-         "utils")
 
-l <- lapply(
-   lib,
-   function(x) {do.call("library", list(x))}
-)
+inst_load_packages <- function(libs) {
+   
+   # Installer les librairies si elles ne sont pas dans les librairies installées
+   s <- sapply(
+      libs, 
+      function(x) {
+         if (!(x %in% utils::installed.packages())) 
+            install.packages(x)
+      }
+   )
+   
+   # Télécharger les librairies
+   s <- sapply(libs, function(x) do.call(library, list(x)))
+}
+
+
+libs <- c("data.table",
+          "ggplot2",
+          "terra",
+          "tidyverse",
+          "utils",
+          "kableExtra")
+
+inst_load_packages(libs)
 
 
 # Fonctions --------------------------------------------------------------------
@@ -156,42 +173,46 @@ graph_density <-
 # noms des axes des graphiques)
 
 
-translate_var <- function(vars) {
+translate_var <- function(vars, suffixe = TRUE) {
    
    # À compléter
    map <- list(
-      dis_m3_pyr = "Débit d'eau moyen (en m\U00B3/s)",
-      rev_mc_usu = "Volume du réservoir d'eau (en million m\U00B3)",
-      dor_pc_pva = "Degré de régulation du réservoir (en %)",
-      lka_pc_cse = "Pourcentage de terre qui correspond à des lacs (en %) (cse)",
-      lka_pc_use = "Pourcentage de terre qui correspond à des lacs (en %) (use)",
-      
-      snd_pc_cav = "Proportion de sable (en %) (cav)",
-      snd_pc_uav = "Proportion de sable (en %) (uav)",
-      snd_pc     = "Proportion de sable (en %)",
-      cly_pc_cav = "Proportion d'argile (en %) (cav)",
-      cly_pc_uav = "Proportion d'argile (en %) (uav)",
-      cly_pc     = "Proportion d'argile (en %)",
-      slt_pc_cav = "Proportion de limon (en %) (cav)",
-      slt_pc_uav = "Proportion de limon (en %) (uav)",
-      slt_pc     = "Proportion de limon (en %)",
-      soc_th_cav = "Quantité moyenne de carbone dans les 5 premiers centimètres de sol (en tonnes/hectar) (cav)",
-      soc_th_uav = "Quantité moyenne de carbone dans les 5 premiers centimètres de sol (en tonnes/hectar) (uav)",
-      soc_th     = "Quantité moyenne de carbone dans les 5 premiers centimètres de sol (en tonnes/hectar)",
-      
-      for_pc_cse = "Proportion occupée par les forêts (cse)",
-      for_pc_use = "Proportion occupée par les forêts (use)",
-      
-      ero_kh_cav = "Érosion causé par les rivières en kg/hectare/année de roche (cav)",
-      ero_kh_uav = "Érosion causé par les rivières en kg/hectare/année de roche (uav",
-      
-      wet_cl_cmj = "Classification des zones humides"
+      dis_m3 = "Débit d'eau moyen (en m\U00B3/s)",
+      rev_mc = "Volume du réservoir d'eau (en million m\U00B3)",
+      dor_pc = "Degré de régulation du réservoir (en %)",
+      lka_pc = "Pourcentage de terre qui correspond à des lacs (en %) (cse)",
+      snd_pc = "Proportion de sable (en %)",
+      snd_pc = "Proportion de sable (en %)",
+      cly_pc = "Proportion d'argile (en %)",
+      slt_pc = "Proportion de limon (en %)",
+      soc_th = "Quantité moyenne de carbone dans les 5 premiers centimètres de sol (en tonnes/hectar)",
+      for_pc = "Proportion occupée par les forêts",
+      ero_kh = "Érosion causé par les rivières en kg/hectare/année de roche",
+      wet_cl = "Classification des zones humides",
+      riv_tc = "Volume de la rivière (en millier m\U00B3)",
+      ria_ha = "Aire de la rivière (en hectares)",
+      wet_cl = "Classification des zones humides",
+      pre_mm = "Précipitations printanières moyennes (en mm)",
+      wet_pc = "Proportion occupée par la classe de terres humides",
+      prm_pc = "Proportion de terre faisant partie du pergélisol (sol gelé en permanence)",
+      gwt_cm = "Profondeur des nappes phréatiques (en cm)",
+      slp_dg = "Inclinaison du terrain (en degrés)",
+      lit_cl = "Classes lithologiques (type de roches)",
+      snw_pc = "Couverture de neige",
+      hdi_ix = "Indice de développement humain",
+      sgr_dk = "Pente hydrique",
+      swc_pc = "Taux de saturation du sol en eau",
+      snow_p = "Précipitation de neige",
+      kar_pc = "Proportion de Karst (une roche sédimentaire se déformant sous l'effet de l'érosion)",
+      glc_cl = "Classification du terrain (forêt, ville, champs, etc.)",
+      pre_sp = "Précipitations printanières maximales (en mm)",
+      riv_lar = "Largeur de la rivière"
    )
    
    translation <- vapply(
       vars, 
       function(x) {
-         res <- map[[x]]
+         res <- map[[substr(x, 1, 6)]]
          if (is.null(res)) {
             res <- x
          }
@@ -200,30 +221,17 @@ translate_var <- function(vars) {
       character(1L)
    ) %>% unname()
    
-   return(translation)
+   if (suffixe) {
+      translation <- paste0(
+         translation, 
+         " : ",
+         gsub("_", "", substr(vars, nchar(vars) - 2, nchar(vars)))
+      )
+   }
+   
+   translation
    
 }
-
-
-# Fonction pour installer, au besoin, une ou plusieurs librairies, pour ensuite
-# les télécharger
-
-
-inst_load_packages <- function(libs) {
-   
-   # Installer les librairies si elles ne sont pas dans les librairies installées
-   s <- sapply(
-      libs, 
-      function(x) {
-         if (!(x %in% utils::installed.packages())) 
-            install.packages(x)
-      }
-   )
-   
-   # Télécharger les librairies
-   s <- sapply(libs, function(x) do.call(library, list(x)))
-}
-
 
 # Fonction pour faire des tests de comparaison de moyenne par patron
 
@@ -310,4 +318,434 @@ mod_missing_wet_cl_cmj <- function(dt) {
    
 }
 
+
+# Fonction pour afficher l'importance des variables 
+
+show_imp_var <- function(mod_obj, nb_var = 10) {
+   
+   stopifnot("variable.importance" %in% names(mod_obj))
+   
+   var_imp <- sort(mod_obj$variable.importance, decreasing = TRUE)[1:nb_var]
+   
+   ggplot() +
+      geom_bar(
+         mapping = aes(
+            x = var_imp,
+            y = factor(
+               translate_var(names(var_imp)), 
+               levels = translate_var(names(var_imp))
+            )
+         ),
+         stat = "identity",
+         orientation = "y"
+      ) +
+      labs(
+         x = "Importance de la variable",
+         y = "Variables"
+      ) + 
+      theme(
+         text = element_text(family = "Times New Roman")
+      )
+   
+   
+}
+
+# Fonction pour exposer la variance expliquée cumulée des composantes (en %)
+
+graph_pca_var_cum <- function(pca, threshold = 0.8) {
+   
+   eig <-  pca$eig
+   nm <- as.numeric(gsub("comp ", "", rownames(eig)))
+   var <- as.numeric(eig[, 3])
+   
+   ggplot() +
+      geom_bar(
+         mapping = aes(
+            x = nm[1:length(var)],
+            y = var
+         ) ,
+         stat = "identity"
+      ) +
+      geom_hline(
+         yintercept = ifelse(threshold < 1, threshold * 100, threshold), 
+         linetype = "dashed", 
+         color = "red"
+      ) +
+      labs(
+         x = "Composante",
+         y = "Variance expliquée cumulée (en %)"
+      ) + 
+      theme(
+         text = element_text(family = "Times New Roman")
+      )
+   
+   
+}
+
+# Fonction pour utiliser la règle de Cattell (PCA)
+
+graph_cattell <- function(pca) {
+   
+   eig <-  pca$eig
+   nm <- as.numeric(gsub("comp ", "", rownames(eig)))
+   var <- as.numeric(eig[, 1])
+   
+   ggplot() +
+      geom_point(
+         mapping = aes(
+            x = nm[1:length(var)],
+            y = var
+         )
+      ) +
+      labs(
+         x = "Composante",
+         y = "Valeurs propres"
+      ) + 
+      theme(
+         text = element_text(family = "Times New Roman")
+      )
+   
+}
+
+# Fonction pour afficher deux composantes principales
+
+graph_pca <- function(pca, components = c(1, 2), nb_var = nrow(pca$var$coord)) {
+   
+   stopifnot(length(components) == 2)
+   
+   w1 <- which(pca$var$contrib[, components[1]] %in% sort(pca$var$contrib[, components[1]], decreasing = TRUE)[1:nb_var])
+   w2 <- which(pca$var$contrib[, components[2]] %in% sort(pca$var$contrib[, components[2]], decreasing = TRUE)[1:nb_var])
+   
+   dt <- data.table(
+      c1 = pca$var$coord[, components[1]][w1],
+      c2 = pca$var$coord[, components[2]][w2],
+      nm = rownames(pca$var$coord)[w1]
+   )
+   
+   dt_supp <- data.table(
+      c1 = pca$quanti.sup$coord[, components[1]],
+      c2 = pca$quanti.sup$coord[, components[2]],
+      nm = rownames(pca$quanti.sup$coord)
+   )
+   
+   tt <- seq(0, 2*pi, length.out = 1000)
+   circle <- data.table(x = cos(tt), y = sin(tt))
+   
+   ggplot()  +
+      geom_segment(
+         data = dt, 
+         mapping = aes(
+            x = 0, 
+            y = 0, 
+            xend = c1, 
+            yend = c2
+         )
+      ) +
+      geom_segment(
+         data = dt_supp, 
+         mapping = aes(
+            x = 0, 
+            y = 0, 
+            xend = c1, 
+            yend = c2,
+            color = "Débit"
+         )
+      ) +
+      geom_polygon(
+         data = circle, 
+         mapping = aes(
+            x = x, 
+            y = y
+         ), 
+         alpha = 0.1
+      ) +
+      geom_text(
+         data = dt, 
+         mapping = aes(
+            x = c1, 
+            y = c2, 
+            label = nm
+         ),  
+         hjust = "left", 
+         vjust = "middle", 
+         size = 3,
+         family = "Times New Roman"
+      ) +
+      geom_text(
+         data = dt_supp, 
+         mapping = aes(
+            x = c1, 
+            y = c2, 
+            label = nm,
+            color = "Débit"
+         ),  
+         hjust = "right", 
+         vjust = "middle", 
+         size = 3,
+         family = "Times New Roman"
+         
+      ) +
+      labs(
+         x = paste0("Composante ", components[1]),
+         y = paste0("Composante ", components[2]),
+         color = ""
+      ) +
+      xlim(c(-1.2, 1.2)) +
+      ylim(c(-1.2, 1.2)) + 
+      theme(legend.position = "none")
+   
+   
+}
+
+# Fonction pour établir la matrice de corrélation
+
+calc_matrix_cor <- function(dt, remove_dupl = FALSE) {
+   
+   stopifnot(is.data.table(dt))
+   
+   vars <- vapply(
+      X = dt, 
+      FUN = is.numeric, 
+      FUN.VALUE = is.logical(1L)
+   )
+   cor_mat <- cor(dt[, names(vars)[which(vars)], with = FALSE]) %>% round(digits = 3)
+   cor_mat <- as.data.table(melt(cor_mat) %>%  suppressWarnings())
+   
+   if (remove_dupl) {
+      
+      cor_mat[, var1_var2 := apply(cor_mat[, .(Var1, Var2)], 1, function(x) paste(sort(x), collapse = ""))]
+      cor_mat <- cor_mat[rowid(var1_var2) == 1]
+      cor_mat[, var1_var2 := NULL]
+      
+   }
+   
+   cor_mat
+   
+}
+
+graph_matrix_corr <- function(dt, ind = FALSE, threshold = 0.9) {
+   
+   stopifnot(is.data.table(dt))
+   
+   cor_mat <- calc_matrix_cor(dt)
+   
+   if (ind) {
+      cor_mat[, value := abs(value) > threshold]
+   }
+   
+   ggplot(
+      data = cor_mat, 
+      mapping = aes(x = Var1, y = Var2, fill = value)
+   ) + 
+      geom_tile() +
+      theme(
+         axis.text.x = element_text(angle = 35, vjust = 0.65)
+      )
+   
+   
+}
+
+apply_joliffe_rule <- function(pca) {
+   
+   eig_dt <- as.data.table(pca$eig[, 1], keep.rownames = TRUE)
+   names(eig_dt) <- c("comp", "eig")
+   
+   eig_dt[eig > 0.7] %>% 
+      knitr::kable(
+         col.names = c("Composantes", "Valeurs propres"), 
+         digits = 2,
+         align = rep("c", 2)
+      ) %>% 
+      kableExtra::kable_classic(
+         full_width = FALSE, 
+         html_font = "Cambria"
+      )
+   
+}
+
+
+# Fonction pour créer la droite d'Henry
+
+graph_qqplot <- function(x) {
+   
+   ggplot(
+      mapping = aes(sample = x)
+   ) + 
+      stat_qq() + 
+      stat_qq_line() +
+      labs(title = "Droite d'Henry",
+           x = "Quantiles théoriques",
+           y = "Quantiles observés")
+   
+}
+
+
+# Fonction pour exposer les VIF's
+
+table_vif <- function(vif) {
+   
+   vif <- copy(vif)
+   
+   vif[, VIF := round(VIF, 2)]
+   w <- which(vif$VIF > 10)
+   vif[, VIF := as.character(VIF)]
+   vif[w, VIF := cell_spec(vif$VIF[w], color = "red")]
+   
+   vif$Variables <- translate_var(vif$Variables)
+   
+   kbl(
+      x = vif[order(VIF, decreasing = TRUE)][1:(length(w) + 4), .(Variables, VIF)], 
+      align = "c", 
+      col.names = c("Variables", "VIF"), 
+      digits = 2,
+      booktabs = TRUE, 
+      escape = FALSE
+   ) %>% kable_classic(
+      full_width = FALSE, 
+      html_font = "Cambria"
+   )
+   
+}
+
+table_ind_cond <- function(ind_cond) {
+   
+   line <- ind_cond[abs(`Condition Index`) > 30][abs(`Condition Index`) == max(`Condition Index`),]
+   
+   w <- which(
+      sapply(
+         X = line, 
+         FUN = function(x) x > 0.6)
+   )
+   
+   if (length(w) - 1) {
+      line <- line[, names(w), with = FALSE]
+      
+      names(line) <- c(names(line)[1], translate_var(names(line)[2:length(names(line))]))
+      
+   }
+   
+   line %>% 
+      kbl(
+         align = "c", 
+         digits = 2,
+         booktabs = TRUE, 
+         escape = FALSE
+      ) %>% 
+      kable_classic(
+         full_width = TRUE, 
+         html_font = "Cambria"
+      )
+}
+
+graph_pred_by_var <- function(pred, obs, var, nm_var) {
+   
+   if (is.numeric(var)) {
+      var <- cut(
+         var,
+         c(-Inf,
+           seq(from = quantile(var, 0.01), 
+               to = quantile(var, 0.99),
+               length.out = 10),
+           Inf)
+      )
+   }
+   
+   dt <- data.table(
+      pred, 
+      obs, 
+      var
+   )
+   
+   res <- dt[, .(Prédictions = mean(pred), Observés = mean(obs), N = .N / nrow(dt)), by = var]
+   res <- melt(
+      data = res, id.vars = c("var", "N"), measure.vars = c("Prédictions", "Observés")
+   )
+   
+   N <- res$N
+   
+   ggplot(
+      data = res,
+   ) + 
+      geom_point(
+         mapping = aes(x = var, y = value, group = variable, color = variable)
+      ) +
+      geom_line(
+         mapping = aes(x = var, y = value, group = variable, color = variable)
+      ) +
+      geom_col(
+         mapping = aes(x = var, y = N),
+         alpha = 0.3
+      ) +
+      theme(
+         axis.text.x = element_text(angle = 35, vjust = 0.65),
+         text = element_text(family = "Times New Roman")
+      ) +
+      labs(
+         x = translate_var(nm_var),
+         y = "Débit d'eau prédit/observés",
+         fill = ""
+      )
+   
+   
+}
+
+
+# Graphique des résidus en fonction des prédictions
+
+graph_res_vs_pred <- function(res, pred) {
+   
+   ggplot() +
+      geom_point(
+         mapping = aes(x = pred, y = res)
+      ) +
+      labs(
+         x = "Prédictions",
+         y = "Résidus"
+      )  + 
+      theme(
+         text = element_text(family = "Times New Roman")
+      )
+   
+}
+
+# Graphique des résidus en fonction des prédictions
+
+graph_res_vs_etiquette <- function(res, etiquette = NULL) {
+   
+   if(is.null(etiquette)) {
+      etiquette <- 1:length(res)
+   }
+   
+   ggplot() +
+      geom_point(
+         mapping = aes(x = etiquette, y = res)
+      ) +
+      labs(
+         x = "Étiquette",
+         y = "Résidus"
+      )  + 
+      theme(
+         text = element_text(family = "Times New Roman")
+      )
+   
+}
+
+# Graphique pour évaluer la normalité des résidus
+
+graph_normalite_res <- function(res) {
+   
+   ggplot(
+      mapping = aes(sample = res)
+      ) + 
+      stat_qq() + 
+      stat_qq_line() +
+      labs(
+           x = "Quantiles théoriques",
+           y = "Quantiles observés"
+      )  + 
+      theme(
+         text = element_text(family = "Times New Roman")
+      )
+   
+}
 

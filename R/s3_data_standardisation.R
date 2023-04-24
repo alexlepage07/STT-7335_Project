@@ -20,10 +20,12 @@
 # Librairies -------------------------------------------------------------------
 
 
-library(assertthat)
-library(data.table)
-library(tidymodels)
-library(tidyverse)
+libs <- c("assertthat",
+          "data.table",
+          "tidymodels",
+          "tidyverse")
+
+inst_load_packages(libs)
 
 
 # Chemins d'accès --------------------------------------------------------------
