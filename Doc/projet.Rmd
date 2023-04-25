@@ -1,8 +1,10 @@
 ---
 title: "Projet"
-output: 
+output:
   html_document:
     css: style.css
+  pdf_document: default
+bibliography: projet.bib
 ---
 
 ```{r, include = FALSE}
@@ -54,13 +56,20 @@ inst_load_packages(libs)
 
 ```
 
-# Contexte et objectifs (1/2 page)
+## Contexte et objectifs
 
-- Contexte
-- Objectifs
-- Hypothèses
+Selon Ressource naturelle Canada, les inondations représentent le type de catastrophes naturelles le plus coûteux au Canada^[[Ressource Naturelle Canada](https://natural-resources.canada.ca/science-and-data/science-and-research/natural-hazards/flood-mapping/24223)]. Afin de faire face à ce type de risque il va de soit de comprendre le phénomène et d'être en mesure d'identifier les zones à risque en produisant des cartes d'inondation. Pour les secteurs ayant des stations hydrologiques, la tâche est relativement simple. Cependant, lorsque l'on veut extrapoler sur des bassins versants non jaugés, la tâche se complexifie.
 
-# Préparation et nettoyage des données (1 page)
+À ce sujet, [Chaduri et al., 2021](@chaudhuri2021inundated) a tenté une approche qui utilise un modèle linéaire qui ne se sert que de l'aire du bassin versant pour prédire la médiane du débit maximum annuel. Par la suite, il utilise une fonction log-spline pour estimer la queue de distribution à partir de la médiane prédite, et ainsi, il estime différents quantiles. Finalement, à partir de ces estimations, il utilise de l'imagerie satellitaire pour identifier les caractéristiques des rivières et, en inversant l'équation de [Manning R., 1981](@manning1891flow), on peut convertir les débits d'eau en hauteur d'eau.
+
+Le présent projet fait suite à [Chaduri et al., 2021](@chaudhuri2021inundated) pour tenter de voir s'il est possible et utile d'avoir recours à un modèle plus élaboré pour estimer le débit d'eau pour des stations non jaugées. Notre objectif consiste donc à utiliser les données de RiverAtlas, provenant du site de [HydroSheds](https://www.hydrosheds.org/hydroatlas), pour tenter de voir quelles variables explicatives pourraient potentiellement être utilisées.
+
+Comme les rivières sont inter-connectées les unes aux autres, une forte dépendance lie le débit de chacune d'entre elles. Pour tenir compte de cette structure de dépendance, nous proposons un modèle linéaire mixte.
+Par ailleurs, comme ce projet est purement exploratoire et vise uniquement à tester le pouvoir prédictif d'un éventuel modèle de débit, nous ne cherchons pas à extrapoler sur de nouveaux bassins versants ou pour une période de temps ultérieure. En revanche, calculer un intervalle de confiance sur les débits prédits permettra d'avoir une appréciation substantielle de la performance du modèle puisque nous pourrons comparer ceux-ci aux débits moyens historiques fournis dans le jeu de données. Cette analyse viendra compléter la métrique de performance commune qu'est l'erreur quadratique moyenne (EQM).
+À noter que, bien que [Chaduri et al., 2021](@chaudhuri2021inundated) fait ses prédiction sur la médiane, nous nous concentrerons sur la moyenne des débits annuels. La raison étant que les modèles mixtes standards sont fait pour estimer la moyenne d'une distribution normales et que les données de RiverAtlas ne fournissent que cette information et non pas les quantiles ou toutes les observations historiques.
+
+
+## Préparation et nettoyage des données (1 page)
 
 - Source
 - Description
@@ -70,7 +79,25 @@ inst_load_packages(libs)
 - Uniformisation des valeurs
 - Validation de fusion de tables
 
-# Analyse descriptive et exploratoire (2-3 pages)
+
+Nous utilisons les données de l'HydroAtlas^[Pour en apprendre d'avantage sur les données utilisées, consultez le site internet d'HydoSheds à l'adresse suivante: https://data.hydrosheds.org/file/technical-documentation/HydroATLAS_TechDoc_v10_1.pdf], provenant du site de [HydroSheds](https://www.hydrosheds.org/hydroatlas) pour tenter de prédire le débit moyen des rivières pour un bassin versant donné. 
+Nous focalisons nos efforts dans la province du Québec en prenant les données nord-américaine et en rognant les fichiers de formes (shapefiles) autour de la province. Le jeu de données ainsi créé contient 162 507 observations et 295 variables disponibles. Chaque observations du jeu de données correspond à un bassin versant et les variables représentent des données utiles pour effectuer des études hydrologiques, telles que les précipitations, le volume d'eau en amont, la pente hydrique, etc. La variable d'intérêt est la suivante: `dis_m3_pyr`. Celle-ci représente la moyenne annuelle des débits d'eau en 
+. Le débit minimal observé est de 0.075 et il peut atteindre des valeurs aussi élevées que 12 343, avec une moyenne de 25. Ces statistiques témoignent de la forte asymétrie existant dans la distribution probabiliste du débit d'eau.
+
+Les variables explicatives d'intérêt ont été sélectionnées manuellement en s'inspirant des variables nécessaires pour calculer l'équation de [Manning R., 1981](@manning1891flow). D'autres variables de même nature ont également été sélectionnées. Ainsi, 66 variables ont été retenues. Par la suite, les variables offrant peu ou pas d'information (variance nulle) ont été retirées, nous laissant avec 56 variables^[Les variables constituant les données sont décrites à cette adresse: https://data.hydrosheds.org/file/technical-documentation/RiverATLAS_Catalog_v10.pdf].
+
+Parmi celles-ci, il y en a 4 qui sont catégorielles: classification du terrain, du milieu humide, des types de roche et la classification hydrologique du bassin versant.
+Puis, il y a 41 variables numériques correspondant à des pourcentages.
+Finalement, les 11 variables restantes sont numériques. Certaines d'entre elles, comme l'aire du bassin ou le volume hydrique, contiennent des valeurs extrêmes.
+
+Afin de permettre l'utilisation d'un modèles linéaire mixte, il faut que la distribution sous-jacente de la variable endogène, et idéalement des variables exogènes aussi, soit normale. En outre, nous utilisons une analyse en composante principales (ACP) afin de réduire la dimension du jeu de données puisque les modèles mixtes gèrent mal les données à forte dimensionnalité. Ce faisant, cela renforce le besoin de transformer les données pour les normaliser. Pour y arriver, nous avons procédé à une transformation Box-Cox (voir [Sakira R, 1992](@boxcox1992)) de la variable endogène, ainsi que de toutes les variables numériques asymétriques.
+
+A prori, certaines variables comportaient des valeurs qui semblaient aberrantes: des pourcentages qui comportaient des milliers et des valeurs -9999. Cependant, en lisant la documentation de celles-ci, nous avons réalisé que ces valeurs avaient leur signification qui leur était propre. Entre autre, les -9999 signifient que la donnée est manquante. 
+Pour ce qui est de la variable `dor_pc_pva`, celle-ci représente la capacité d'un barrage à soutenir le débit d'une rivière. Lorsque la valeur est supérieure à 1000, cela signifie que le barrage peut soutenir le débit de plus d'une rivières à la fois. La signification étant autre, nous avons ajouté une variable indicatrice capturant cette information supplémentaire, puis nous avons plafonné cette variable à 100 par souci de cohérance avec les autres variables de même nature.
+En ce qui attrait à la variable `lka_pc_cse`, celle-ci réfère au pourcentage du bassin versant occupé par des lacs. La raison pour laquelle cette variable atteignait le millier est qu'un entier occupe moins d'espace de stockage qu'un nombre réel. Or, par souci de précision, les chercheurs ayant travaillé sur cette variables ont choisit de conserver trois décimales. Ce faisant 0.001 est noté 1 et 0.999 est noté 999. Ainsi, nous avons laissé cette variable telle quelle puisque, de toute façon, lors de l'étape de l'ACP, nous normalisons les variables.
+
+
+## Analyse descriptive et exploratoire (2-3 pages)
 
 - Type d’échantillon
 - Nombre d'observations et variables
@@ -81,9 +108,9 @@ Doit se faire sur la jeu de données d'entraînement (voir p.245 ESL)
 - Création de nouvelles variables
 - Identification de la dépendance
 
-# Modélisation et validation (1-2 pages)
+## Modélisation et validation (1-2 pages)
 
-## Pertinence du modèle
+### Pertinence du modèle
 
 Le modèle proposé pour notre analyse est un modèle mixte. En effet, ce dernier a l'avantage de prendre en considération la dépendance entre certaines observations, dépendance provenant du fait de leur proximité qui engendre des caractéristiques similaires qui ne sont pas mesurées et considérées comme variables explicatives^[p. 123, Notes de cours du cours STT-7125]. Le modèle mixte a, donc, l'avantage de considérer la corrélation entre les observations et, ainsi, modélisé adéquatement les résidus. La forme du modèle est tel que : 
 
@@ -132,7 +159,7 @@ $$\boldsymbol{D} = \begin{bmatrix}
 0 ~ 0 ~ 0~ ... ~ \sigma^2_{3844}\\
 \end{bmatrix}_{3844 \times 3844}$$
 
-## Choix des métriques
+### Choix des métriques
 
 Notre variable d'intérêt, soit le débit d'eau des rivières, est une variable continue. De ce fait, nous avons la possibilité de prendre comme métrique de performance : 
 
@@ -144,13 +171,13 @@ Nous prendrons l'erreur quatratique moyen autant pour évaluer nos modèles que 
 
 <span style="color:red">Justifier pourquoi on ne prendre pas EAM</span>
 
-## Stratégie de validation et choix des hyperparamètres
+### Stratégie de validation et choix des hyperparamètres
 
 Notre stratégie de validation est de séparer notre jeu de données en 3 parties soit une pour l'entraînement (70%), une pour la validation des modèles et leur comparaison entre eux (15%), et une pour tester notre modèle final (15%). Pour faire la sélection d'hyperparamètres, nous faisons une validation croisée à partir  du jeu d'entraînement. Pour estimer l'erreur de généralisation basée sur ces hyperparamètres optimaux, nous allons utiliser le jeu de validation. La raison pourquoi nous n'estimons pas l'erreur de généralisation sur notre jeu d'entraînement (et pourquoi nous avons ajouté un jeu de validation) est que si nous estimons l'erreur sur le jeu d'entraînement avec des hyperparamètre qui ont été choisis pour l'optimiser, nous allons possiblement sous-estimer notre erreur de généralisation puisque nous estimons une erreur avec des hyperparamètres qui la minimise. Ainsi, pour avoir un portrait adéquat de l'erreur de généralisation, nous utilisons le jeu de validation pour faire cette estimation. 
 
 Par ailleurs, bien que nous avons une dépendance spatiale entre les observations, nous n'allons pas user de la validation croisée par bloc pour tenir en compte cette dépendance ou encore séparer notre jeu de données en 3 de façon à faire en sorte que les observations qui ont des dépendances entre elles se trouvent dans le même jeu de données . En effet, tel que spécifier dans l'article _Cross-validation strategies for data with temporal, spatial, hierarchical, or phylogenetic structure_^[p.917, mettre la référence], lorsqu'un modèle est créé dans le but de faire des prédictions dans les mêmes territoires (donc, la même structure de dépendance) que ceux vus par le modèle en entraînement, il n'est pas recommandé d'utiliser une telle stratégie de validation, car elle peut mener à biaiser l'estimation de l'erreur de généralisation. En effet, une validation croisée par bloc ou une séparation du jeu de données considérant la dépendance aura comme effet de venir surestimer l'estimation de l'erreur de généralisation, comme elle viendra estimer l'effet de faire des prédictions sur de nouveaux territoires, ce qui n'est pas l'usage désiré de ce modèle. 
 
-## Préselection de variables 
+### Préselection de variables 
 
 Comme mentionné, pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité ainsi que la multicolinéarité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. En faisant ainsi, cela nous permet d'obtenir un modèle final plus interprétable et de diminuer les risques de surapprentissage^[Gregorutti, B. & Michel, B & Saint-Pierre, P. (2017). Correlation and variable importance in random forests. Statistics and Computing, v27 n3 (201705): 659-678.]. 
 
@@ -364,9 +391,9 @@ Nous pouvons observer qu'en dessous d'une certaine valeur, nous obtenons toujour
 - Enjeux éthiques
 - Recommandation du modèle? 
 
-# Annexe
+## Annexe
 
-## A.1 Diagnostique de multicolinéarité {#multicolinearity}
+### A.1 Diagnostique de multicolinéarité {#multicolinearity}
 
 Voici, un portrait des itérations faits pour éliminer certaines variables qui sont hautement corrélées. À chaque étape, nous retirons une des variables qui ont de haute valeur.
 
@@ -396,7 +423,7 @@ table_ind_cond(ind_cond$ind_cond_4)
 
 Nous arrêtons les itérations, ici, car à partir de cette itération, nous n'avons plus de variable à retirer selon ce diagnostique.
 
-## A.2 Forêt aléatoire {#random_forest}
+### A.2 Forêt aléatoire {#random_forest}
 
 - **Méthodologie**
 
@@ -442,7 +469,7 @@ res %>%
 - Moyenne : `r round(mean(river_dt$dis_m3_pyr), 3)`
 - Écart-type : `r round(sd(river_dt$dis_m3_pyr), 3)`
 
-## A.3 Arbre de décision {#decision_tree}
+### A.3 Arbre de décision {#decision_tree}
 
 - **Méthodologie**
 
@@ -490,7 +517,7 @@ res %>%
 
 **Constats :** On voit que notre modèle ne semble pas être en surapprentissage. L'EQM est de `r round(tree_model$rmse_val[[1]]$.estimate[1], 2)` sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la valeur observée est  $\sqrt{EQM}$ = ~`r round(sqrt(tree_model$rmse_val[[1]]$.estimate[1]), 2)`. On voit sans surprise que cette arbre de décision a surappris.
 
-## A.4 Modèle _Lasso_ {#lasso}
+### A.4 Modèle _Lasso_ {#lasso}
 
 Un modèle _Lasso_ est une méthode de contraction des coefficients. Comparé au modèle linéaire, ce modèle se voit ajouter une contrainte, soit une valeur maximale totale qu'il peut attribuer à l'ensemble de ses coefficients. Les coefficients du modèle sont établis en minimisant l'erreur quadratique au travers les observations avec la contrainte que la somme des coefficients ne peut pas dépasser une certaine valeur :
 
