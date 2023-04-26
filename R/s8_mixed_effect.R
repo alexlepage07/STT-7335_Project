@@ -28,7 +28,8 @@ source("./R/utils.R")
 
 
 libs <- c("data.table",
-          "lme4")
+          "lme4",
+          "tidymodels")
 
 inst_load_packages(libs)
 
@@ -111,7 +112,6 @@ lmm_2 <- lmer(
       I(slp_dg_uav)^2 +
       riv_tc_usu:ria_ha_csu  + 
       - MAIN_RIV + 
-      (1 | MAIN_RIV) +
       (ria_ha_csu | MAIN_RIV),
    data = train_dt,
    REML = TRUE
@@ -137,9 +137,7 @@ lmm_3 <- lmer(
       I(slp_dg_uav)^2 +
       riv_tc_usu:ria_ha_csu  + 
       - MAIN_RIV + 
-      (1 | MAIN_RIV) +
-      (ria_ha_csu | MAIN_RIV) +
-      (lka_pc_use | MAIN_RIV),
+      (ria_ha_csu + lka_pc_use | MAIN_RIV),
    data = train_dt,
    REML = TRUE
 )
