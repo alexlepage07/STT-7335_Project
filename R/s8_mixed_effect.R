@@ -81,12 +81,25 @@ res_0 <- lapply(
 # Modèle avec une ordonnée à l'origine différent par MAIN_RIVER
 
 lmm_1 <- lmer(
-   dis_m3_pyr ~ . + 
+   dis_m3_pyr ~ 
+      lka_pc_use +
+      ria_ha_csu + 
+      riv_tc_usu + 
+      gwt_cm_cav + 
+      slp_dg_cav + 
+      swc_pc_uyr + 
+      kar_pc_cse + 
+      riv_larg_csu + 
+      pre_spring_max_csu + 
+      wet_pc_u01 + 
+      cly_pc_uav +
+      glc_cl_cmj + 
+      wet_cl_cmj + 
+      lit_cl_cmj + 
       I(sgr_dk_rav)^2 +
       I(for_pc_use)^2 +
       I(slp_dg_uav)^2 +
       riv_tc_usu:ria_ha_csu  + 
-      - MAIN_RIV + 
       (1 | MAIN_RIV),
    data = train_dt,
    REML = TRUE
@@ -106,18 +119,61 @@ names(res_1) <- names(train_dt)
 # Modèle 1 + une pente différente pour la variable ria_ha_csu
 
 lmm_2 <- lmer(
-   dis_m3_pyr ~ . + 
+   dis_m3_pyr ~ 
+      lka_pc_use +
+      ria_ha_csu + 
+      riv_tc_usu + 
+      gwt_cm_cav + 
+      slp_dg_cav + 
+      swc_pc_uyr + 
+      kar_pc_cse + 
+      riv_larg_csu + 
+      pre_spring_max_csu + 
+      wet_pc_u01 + 
+      cly_pc_uav +
+      glc_cl_cmj + 
+      wet_cl_cmj + 
+      lit_cl_cmj + 
       I(sgr_dk_rav)^2 +
       I(for_pc_use)^2 +
       I(slp_dg_uav)^2 +
       riv_tc_usu:ria_ha_csu  + 
-      - MAIN_RIV + 
       (ria_ha_csu | MAIN_RIV),
    data = train_dt,
    REML = TRUE
 )
 
 ## Modèle 3
+
+# Modèle 1 + une pente différente pour la variable ria_ha_csu (pente et ordonnée
+# non-corrélées)
+
+lmm_3 <- lmer(
+   dis_m3_pyr ~ 
+      lka_pc_use +
+      ria_ha_csu + 
+      riv_tc_usu + 
+      gwt_cm_cav + 
+      slp_dg_cav + 
+      swc_pc_uyr + 
+      kar_pc_cse + 
+      riv_larg_csu + 
+      pre_spring_max_csu + 
+      wet_pc_u01 + 
+      cly_pc_uav +
+      glc_cl_cmj + 
+      wet_cl_cmj + 
+      lit_cl_cmj + 
+      I(sgr_dk_rav)^2 +
+      I(for_pc_use)^2 +
+      I(slp_dg_uav)^2 +
+      riv_tc_usu:ria_ha_csu  + 
+      (ria_ha_csu || MAIN_RIV),
+   data = train_dt,
+   REML = TRUE
+)
+
+## Modèle 4
 
 res_2 <- lapply(
    names(train_dt), 
@@ -130,16 +186,58 @@ names(res_2) <- names(train_dt)
 
 # Modèle 2 + une pente différente pour la variable lka_pc_use
 
-lmm_3 <- lmer(
-   dis_m3_pyr ~ . + 
+lmm_4 <- lmer(
+   dis_m3_pyr ~ 
+      lka_pc_use +
+      ria_ha_csu + 
+      riv_tc_usu + 
+      gwt_cm_cav + 
+      slp_dg_cav + 
+      swc_pc_uyr + 
+      kar_pc_cse + 
+      riv_larg_csu + 
+      pre_spring_max_csu + 
+      wet_pc_u01 + 
+      cly_pc_uav +
+      glc_cl_cmj + 
+      wet_cl_cmj + 
+      lit_cl_cmj + 
       I(sgr_dk_rav)^2 +
       I(for_pc_use)^2 +
       I(slp_dg_uav)^2 +
       riv_tc_usu:ria_ha_csu  + 
-      - MAIN_RIV + 
       (ria_ha_csu + lka_pc_use | MAIN_RIV),
    data = train_dt,
    REML = TRUE
 )
 
+## Modèle 4
+
+# Modèle 2 + une pente différente pour la variable lka_pc_use (pente et ordonnée
+# non-corrélées)
+
+lmm_5 <- lmer(
+   dis_m3_pyr ~ 
+      lka_pc_use +
+      ria_ha_csu + 
+      riv_tc_usu + 
+      gwt_cm_cav + 
+      slp_dg_cav + 
+      swc_pc_uyr + 
+      kar_pc_cse + 
+      riv_larg_csu + 
+      pre_spring_max_csu + 
+      wet_pc_u01 + 
+      cly_pc_uav +
+      glc_cl_cmj + 
+      wet_cl_cmj + 
+      lit_cl_cmj + 
+      I(sgr_dk_rav)^2 +
+      I(for_pc_use)^2 +
+      I(slp_dg_uav)^2 +
+      riv_tc_usu:ria_ha_csu  + 
+      (ria_ha_csu + lka_pc_use || MAIN_RIV),
+   data = train_dt,
+   REML = TRUE
+)
 
