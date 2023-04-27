@@ -108,6 +108,113 @@ Doit se faire sur la jeu de données d'entraînement (voir p.245 ESL)
 - Création de nouvelles variables
 - Identification de la dépendance
 
+### Analyse de l'échantillon
+
+La base de données est constituée de plus de 162000 observations pour 60 variables. Le données ont été collectées auprès de plusieurs sources différentes comprenant des universités (Berkeley par exemple), des institutions publiques ou encore de projet de collecte de données comme HydroSHEDS. Ces données n’ont donc pas été observées dans un but particulier mais surtout pour permettre leur exploitation, peu importe l’objectif et toute l’information disponible a été conservée ou résumée. Bien évidemment, la méthode de collecte de données est différente d’un sondage. On peut donc en conclure que la collecte de données est observationnelle. 
+
+Pour chaque variable, les données ont été réanalysées de sorte à minimiser les potentielles erreurs de mesure. Le nombre de données manquantes a été minimiser également par interpolation spatiale, qui permet d’attribuer des valeurs auxquelles on n’a pas accès. On peut noter que cette interpolation est une première source de biais pour les variables qui ne sont pas fortement corrélées dans l’espace et une première surestimation de la corrélation entre les variables. En effet, certaines variables ne sont pas dépendantes dans l’espace et cette interpolation pourrait mener à une surestimation de cette dépendance. 
+
+Nous allons donc analyser les différentes sources de biais et d’inexactitudes dans les données. Pour commencer, l’étendue des années de collecte des observations est très large, en effet, certaines observations datent du début des années 2000 et d’autres de la fin des années 2010. Dans notre jeu de données nous nous intéressons surtout aux moyennes, alors l’influence de cet aspect sur nos observations reste faible. De plus, La réanalyse effectuée devrait en théorie pouvoir corriger les erreurs et réduire les risques liées à l’écart d’âge des observations. 
+
+ De plus, des variables sont arbitrairement bornées par les collecteurs. La variable Stream Gradient est limitée entre 60°N et 83°S par exemple. Les valeurs extrêmes sont donc par conséquent retirées du jeu de données. Cela implique directement une sous-estimation de la variance. Le nombre de données manquantes est également augmenté par ce procédé, ce qui induira possiblement un nouveau biais, selon le traitement de ces valeurs manquantes. 
+ 
+ On remarque également une réduction des valeurs pouvant être prises par des variables pour faciliter l’utilisation des données, on peut par exemple le voir sur les variables Climate Strata et Climate Zones. En effet, les observations initiales découpaient les zones et les couches climatiques en 125 catégories et par soucis de facilité, ces catégories ont été elles-mêmes regroupées en 18 catégories plus larges. On risque alors de mettre dans la même catégorie deux zones de climat relativement différentes. 
+ 
+ Enfin, une bonne partie des variables résulte de spéculations ou de projections dans le futur suivant des modèles. Les modèles d’évolution construits ont en général des hypothèses restrictives et possiblement des hyperparamètres à définir. En accord avec le compromis biais-variance, la complexité de ces modèles engendre une variance relativement grande entrainant alors un surapprentissage. Les valeurs prédites et l’erreur de généralisation en seront donc affectées. Mais encore, il peut exister différents modèles d’évolution pour un même phénomène, menant donc à faire un choix arbitraire. Comme exemple on peut citer la variable Potential Evapotranspiration, où l’auteur précise que le choix du modèle a été fait en fonction des résultats obtenus pour l’Afrique et l’Amérique du Sud. Le modèle peut donc être moins fiable pour les autres continents. Le même phénomène s’applique pour la variable de la végétation potentielle sans activité humaine dont le modèle a été principalement testée dans les localisations où l’activité humaine est très faible ou encore la progression des glaciers ou des permafrost dont le modèle est paramétré en fonction d’estimations de glaciers et permafrost sur la période 1961-1990. 
+ 
+On peut également noter que l’année 2000 est prise en référence pour plusieurs variables sans explications pertinentes. On suppose que la raison principale réside dans le fait que les premières mesures « précises » ont été prises autour de cette année ou que l’année 2000 marque le début du siècle. L’arrivée de nouvelles technologies dans la collecte de données, notamment des satellites, ont révolutionné la collecte de données, ce qui justifie, au moins en partie, que l’on considère l’année 2000 comme référence. 
+
+### Analyse et gestion des données manquantes
+
+#### Présentation des données manquantes
+
+Les données manquantes dans un jeu de données sont chose commune et peuvent être issues de diverses causes comme des capteurs défectueux, d'oublis lors de la collecte des données ou, encore, de mesures ajoutées en cours de route d'un projet. Notre jeu de données ne fait pas exception : nous avons des données manquantes dénotées par des _-999_'s. Pour faire le portrait des données manquantes de notre jeu de données, le Tableau 2.1.1 (Annexe A1) expose en détail les variables pour lesquelles nous avons des données manquantes et le nombre/pourcentage d'observations qui sont touchées. La variable la plus touchée est la classification des zones humides, qui contient 44% de données manquantes. Les autres variables touchées contiennent moins de 1% de données manquantes. 
+
+#### Premiers traitements
+
+L’acronyme *cav* désigne le bassin versant observé (*Catchment*), tandis que *uav* désigne une aggrégation des bassins en amont (*upstream*).
+Nous remarquons qu'une variable ressort du lot avec un pourcentage de près de 44% de valeurs manquantes soit celle de la classification des zones humides. Or, dans la description des variables de notre jeu de données, [_RiverATLAS Attributes_](https://data.hydrosheds.org/file/technical-documentation/RiverATLAS_Catalog_v10.pdf), on y spécifie que les _-999_'s sont, en fait, les endroits n'ayant pas de zone humide ce qui explique pourquoi elles ne sont pas classifiées. Cette variable contient 12 classes numérotées de 1 à 12. Pour traiter les non-réponses de cette variable, nous y ajoutons un 13e classe qui équivaut à _aucune zone humide_. Nous remplaçons, donc, les valeurs _-999_ par un facteur correspondant à _0_.
+
+```{r}
+
+
+# Modifier les -999 par une classe pour la variable wet_cl_cmj
+
+mod_missing_wet_cl_cmj(river_dt)
+
+
+```
+
+:Pour ce qui est des autres variables présentées dans le tableau 2.1.1 (Annexe A1), celles-ci sont bien des valeurs manquantes qui nécessitent d'être analysées et traitées.
+
+D'une part, notons que chaque variable est mesurée pour le bassin observé ( _cav_ ) et pour les bassins en amont ( _uav_ ). Or, dans ces cas, le patron de non-réponse est très similaire. En effet, si une variable est manquante pour tous les bassins en amont, elle le sera assurément pour le bassin présent. Par ailleurs, notamment grâce au Tableau 2.1.2 (Annexe A1), il est intéressant d'observer que la corrélation entre les variables _cav_ et _uav_ sont linéairement très corrélées.
+
+Étant donné cette forte corrélation linéaire, et considérant qu'il y a nettement moins de valeurs manquantes pour les variables portant le suffixe  _uav_ que _cav_, nous retirons ces dernières.
+
+#### Pourcentage par patrons de non-réponse
+
+Nous voyons dans le Tableau 2.1.3 (Annexe A1) le seul patron de non-réponse de notre jeu de données ainsi que la proportion des observations qui y est associé. Celui-ci est composé des variables de la composition du sol et il représente 0.06% de nos données. À noter que chacune de ces quatres variables proviennent d'une même source de données: [SoilGrids1km; Hengl et al. 2014](https://www.isric.org/explore/soilgrids).
+
+Dans la documentation du jeu de données, il est précisé que les valeurs manquantes pour ces variables sont causées par la présence de grandes surfaces d'eau telles que des lacs. Pour s'en convaincre la carte interactive disponible en annexe A1 présente la localisation des bassins versants où on observe des valeurs manquantes.
+
+#### Identification du mécanisme de non-réponse
+
+Nous faisons une analyse préliminaire pour évaluer si les données sont manquantes de façon complètement aléatoire. Pour ce faire, nous commençons à comparer les graphique de la distribution de variables explicatives pour les observations qui ne font pas parties du patron (`patron = 0`) au graphique de la même variable mais avec les observation qui font partie de ce patron (`patron = 1`). Nous montrons en annexe 2 quelques exemples de variables dont la distribution changent en fonction de si les observations font parties du patron ou non (débit d'eau moyen, proportion occupée par des forêts...) ce qui suggère que nous ne sommes pas en présence de valeurs manquantes complètement aléatoire. 
+
+Cette analyse préliminaire des distributions suggère que nous ne sommes pas en présence de données manquantes de façon complètement aléatoire puisque visuellement les distributions de variables pour les données observées et les données manquantes sont différentes.
+
+Pour poursuivre notre analyse, nous exposons dans le tableau 2.1.4 (Annexe A1) l'ensemble des _test-t_'s possibles pour comparer la moyenne des autres variables pour les observations faisant parties du patron et celle pour les observations ne faisant pas parties du patron.
+
+Nous remarquons que `r sum(t_test_res$p_value < 0.05)` tests ont un seuil observé en dessous de 5%. Cela signifie que pour ces tests la moyenne de la variable évaluée est significativement différente en présence ou non du patron de non-réponse.
+
+En revanche, faire autant de _test-t_'s a ses limites. En effet, puisque nous faisons au total `r nrow(t_test_res)`, nous avons le problème de comparaisons multiples qui implique que, même si toutes les moyennes étaient réellement égales, une partie des tests seraient rejetée. Or, dans notre cas, une très grande partie le sont ce qui appuie notre hypothèse comme quoi les données ne sont pas manquantes complètement aléatoirement.
+
+Pour valider nos analyses préliminaires, nous utilisons le test de _Little_, qui calcule une statistique telle que :
+$$d^2 = \sum_{j = 1}^J (\hat{\mu}_j - \hat{\mu}_j^{ML})\hat\Sigma_j^{-1}(\hat{\mu}_j - \hat{\mu}_j^{ML})$$
+Si les données sont manquantes de façon complètement aléatoire, nous aurons que $$d^2 \sim \chi_{\sum_{j=1}^J k_j-k}.$$ 
+
+En utilisant la formule `naniar::mcar_test`, nous obtenons que le seuil observé est de `r res$p.value` qui confirme notre hypothèse. On rejette, donc, l'hypothèse $H_0 :$ Données manquantes avec un mécanisme _MCAR_.
+
+#### Conclusion de l'analyse
+En conclusion, comme la non-réponse pouvait être prédite selon la variable de
+pourcentage de couverture des lacs dans le bassin (`lka_pc_cse`) et que
+ce patron était associé à des valeurs significativement différentes pour les
+autres variables, on peut affirmer que le patron de non-réponse est MAR.
+
+Évidemment, le fait de retirer des données MAR peut introduire un biais.
+Néanmoins, l'objectif de ce travail est de prédire le débit d'eau des rivières. Comme il n'y a pas de sens à calculer un débit d'eau dans un lac, nous allons simplement retirer ces observations du jeu de données.
+
+### Réduction de la dimensionalité par ACP
+
+#### mise en oeuvre et résultat
+
+Notre objectif avec cette analyse en composantes principales était de faire un prétraitement des données. Nous avons été en mesure d’établir certaines relations entre différentes variables. On présente ces relations dans les lignes ci-dessous. 
+
+Pour la première composante principale
+Les variables corrélées positivement sont `pre_nn_xxx` (poids de 0,38 qui représente la quantité de précipitation), `gwt_cn_cav` (0,18 est la profondeur de la nappe phréatique) alors que `slp_dg_cav`/`uav` (0,14 correspond à la pente du terrain).
+
+Les variables corrélées négativement sont `hdi_ix_cav` (-0,13 qui est l’indice de développement humain), `prm_pc_cse` / use (-0,11 correspond au pergélisol).
+
+Pour la seconde composante principale
+Les variables qui présentent une corrélation positive sont `rev_nc_usu` (0,34 le volume du réservoir), `ria_ha_csu`/`usu` (0,40 la surface de la rivière) et `riv_tc_csu`/`usu` (0,45 le volume de la rivière).
+
+Les variables pour lesquelles on observe une corrélation négative correspondent à `ero_kh_cav` (-0,14 qui est l’érosion du sol) alors que `slp_dg_cav`/`uav` (-0,14 est la pente du terrain), `syr_dk_rav` (-0,12 le gradient de l’affluent) et finalement `gwt_cn_cav` (-0,12 la profondeur de la nappe phréatique).
+
+Pour la troisième composante principale
+Les variables avec une corrélation positive sont `gwt_cn_cav` (0,36 profondeur de la nappe phréatique), `slp_dg_uav`/`cav` (0,41 est la pente du terrain) tandis que `sgr_dk_rad` (0,26 est le gradient de l’affluent) et finalement `ero_hk_cav`/`uav` (0,40 correspond à l’érosion).
+
+#### L’interprétation 
+
+La première composante principale correspond à des rivières qui ont accès à de l’eau *courante* puisqu’on récupère de l’eau de pluie, mais la nappe phréatique serait assez profonde et on est devant un terrain qui est en pente. Possiblement que nous pourrions être en présence de rivières moins impactées par l'activité anthropique.
+
+Quant à la deuxième composante principale, celle-ci indiquerait plus des rivières qui ont accès à des grandes quantités d’eau et l’eau serait plus statique. On est devant une corrélation négative entre la pente du terrain et l'érosion.
+
+Pour la troisième composante principale, on serait en présence de rivières qui ont un terrain en pente ainsi qu’une nappe phréatique profonde.
+
+Contrairement à la première composante principale, on n’observe pas de relation significative par rapport à des variables qui indiquent le volume de la rivière ou la quantité de précipitations. On remarque que la variable `dis_n3_pyr` est corrélée positivement de manière importante avec la seconde composante principale. 
+
+On constate que 78,9% de la variabilité de la variable dis_n3_pyr est expliquée par la seconde composante principale alors que c’est 0% pour la première composante principale et 8,8% pour la troisième composante principale. Néanmoins, il est plausible de penser que la première composante principale est corrélée avec la variable d’intérêt à cause de la quantité de pluie. Il est probable que la première composante principale soit en corrélation avec la variable d’intérêt mais de façon non linéaire.
+
 ## Modélisation et validation (1-2 pages)
 
 ### Pertinence du modèle
@@ -393,7 +500,207 @@ Nous pouvons observer qu'en dessous d'une certaine valeur, nous obtenons toujour
 
 ## Annexe
 
-### A.1 Diagnostique de multicolinéarité {#multicolinearity}
+### A.1 Tableaux, cartes et graphiques pour l'analyse descriptive
+
+Tableau 2.1.1 indiquant le nombre et le pourcentage de données manquantes par variable
+
+```{r}
+
+# Calcul du pourcentage par variable -------------------------------------------
+
+# Calculer le nombre de données manquantes par variable et conserver que celles avec des données manquantes
+var_missing_data <- unlist(lapply(
+      X = river_dt, 
+      FUN = function(x) {
+         res <- sum(x == -999)
+         if(res != 0) {res} else {NULL}
+      }
+   ))
+
+# Changer les noms des variables 
+names(var_missing_data) <- translate_var(names(var_missing_data))
+
+# Changer le format de la table et le mettre en data.table
+var_missing_data <- as.data.table(t(t(var_missing_data)), keep.rownames = TRUE)
+
+# Calculer le % de données manquantes
+var_missing_data[, pourc := paste0(round(V1 / nrow(river_dt) * 100, 1), "%")]
+
+kbl(
+   x = as.data.table(t(t(var_missing_data)), keep.rownames = TRUE), 
+   align = c("l", "c", "c"), 
+   col.names = c("Variables", "Nombre de données manquantes", "Pourcentage de données manquantes"), 
+   caption = "Tableau 2.1.1 - Pourcentage de données manquantes par variable"
+) %>% kable_classic(
+   full_width = TRUE, 
+   html_font = "Cambria"
+)
+
+```
+
+Tableau 2.1.2 Jusitifant de la forte corrélation entre les variables _cav_ et _uav_
+
+```{r, echo = FALSE}
+
+# Nous remplaçons les -999 par des NA
+col_w_na <- get_col_w_na(river_dt, na_pattern = -999)
+river_dt[, (col_w_na) := 
+            lapply(
+               X = .SD, 
+               FUN = function(x) fifelse(x == -999, get_na_by_type(x), x)),
+         .SDcols = col_w_na]
+
+# Calculer les corrélation entre les mêmes variables, mais cav et uav
+var_suffix <- 
+   unique(
+      sapply(
+         grep("uav", col_w_na, value = TRUE), 
+         function(x) substr(x, 1, nchar(x) - 4)
+      )
+   )
+
+res <-
+   sapply(var_suffix, function(nm)
+      round(cor(
+         river_dt[[paste0(nm, "_cav")]],
+         river_dt[[paste0(nm, "_uav")]],
+         use = "complete.obs"),
+         2
+      ))
+
+kbl(
+   x = t(as.data.table(res)), 
+   align = rep("c", length(res)),  
+   col.names = translate_var(names(res)), 
+   caption = "Tableau 2.1.2 - Coefficient de corrélation entre les variables étiquetées cav et uav, pour différentes métriques"
+) %>% kable_classic(
+   full_width = TRUE, 
+   html_font = "Cambria"
+)
+
+# Nous retirons les variables de notre jeu de données
+
+
+river_dt <- river_dt[, !grep("cav", col_w_na, value = TRUE), with = FALSE]
+
+```
+
+Tableau 2.1.3 décrivant les patrons de non-réponse de nos données manquantes 
+
+```{r}
+
+# Patrons de non-réponse -------------------------------------------------------
+
+# Sélection des variables avec des valeurs manquantes
+n <- get_col_w_na(river_dt)
+
+# Création de la matrice R
+R_dt <- as.data.table(is.na(river_dt[, n, with = FALSE]))
+
+# Traduire les variables en leur description
+names(R_dt) <- translate_var(names(R_dt))
+n <- translate_var(n)
+
+# Changer les -999 pour le nom de la variable manquante
+R_dt[, (n) := lapply(n, function(var_name) {fifelse(R_dt[[var_name]], paste0("\U2022 ", var_name, " <br> "), "")})]
+
+# Créer une colonne contenant l'ensemble des variables (patron) pour une observation
+# donnée (une ligne) contenant des valeurs manquantes
+R_dt[, pattern := apply(.SD, 1, function(x) paste(x, collapse = "")), .SDcols = n]
+
+# Calculer le % de cas ayant chaque patron de valeurs manquantes
+R_dt <- R_dt[pattern != "", paste0(round(.N / nrow(R_dt) * 100, 2), "%"), by = pattern]
+
+R_dt <- cbind(data.table(num = 1:nrow(R_dt)), 
+              R_dt)
+
+R_dt %>%  knitr::kable(
+   escape = FALSE,
+   format = "html", 
+   align = c("c", "l", "c"),
+   col.names = c("Numéro", 
+                 "Patrons de non-réponse", 
+                 "Pourcentage de données manquantes"),
+   caption = "Tableau 2.1.3 - Pourcentage de données manquantes par patron de non-réponse"
+) %>% kable_classic(
+   full_width = TRUE, 
+   html_font = "Cambria"
+) %>% row_spec(
+   row = 1, 
+   extra_css = "border-bottom: 1px solid")
+
+```
+
+Carte interactive utilisée en vérification des informations données sur les données manquantes par la documentation
+
+```{r}
+river_vec <- terra::vect(
+   shape_file_path,
+   extent = ext(c(-79.85, -55.53, 45.04, 62.80))
+)
+river_vec <- sf::st_as_sf(river_vec)
+leaflet(river_vec[river_vec$slt_pc_uav == -999, ]) %>%
+   addTiles() %>%
+   addPolylines()
+
+```
+
+Graphiques justifiant que les données manquantes ne sont pas Missing Completely At Random
+
+```{r}
+river_dt[, patron := 0]
+river_dt[is.na(snd_pc_uav), patron := 1]
+```
+
+::: columns 
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "dis_m3_pyr", color = "patron")
+```
+
+On voit que la distribution du débit d'eau moyen pour les observations manquantes ont beaucoup plus de poids dans les extrêmes et possède une moyenne largement plus grande.
+
+::::
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "lka_pc_use", color = "patron")
+```
+On voit que pour les observations manquantes semblent se retrouver dans des territoires avec un plus haut pourcentage de terre correspondant à des lacs supposant.
+
+::::
+
+:::
+
+::: columns
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "for_pc_use", color = "patron")
+```
+Les moyennes du pourcentage occupé par les forêts sont relativement similaires. Un _test-t_ nous permettrait de valider si elles sont significativement différente. Par contre, la distribution est différente avec les données sans données manquantes qui se retrouvent plus souvent dans les proportions élevées.
+
+
+::::
+
+:::: column
+
+```{r}
+graph_density(river_dt, var = "ero_kh_cav", color = "patron")
+```
+
+L'érosion des sols semble être moins élevée pour les données manquantes.
+
+::::
+
+:::
+
+
+### A.2 Diagnostique de multicolinéarité {#multicolinearity}
 
 Voici, un portrait des itérations faits pour éliminer certaines variables qui sont hautement corrélées. À chaque étape, nous retirons une des variables qui ont de haute valeur.
 
@@ -423,7 +730,7 @@ table_ind_cond(ind_cond$ind_cond_4)
 
 Nous arrêtons les itérations, ici, car à partir de cette itération, nous n'avons plus de variable à retirer selon ce diagnostique.
 
-### A.2 Forêt aléatoire {#random_forest}
+### A.3 Forêt aléatoire {#random_forest}
 
 - **Méthodologie**
 
@@ -469,7 +776,7 @@ res %>%
 - Moyenne : `r round(mean(river_dt$dis_m3_pyr), 3)`
 - Écart-type : `r round(sd(river_dt$dis_m3_pyr), 3)`
 
-### A.3 Arbre de décision {#decision_tree}
+### A.4 Arbre de décision {#decision_tree}
 
 - **Méthodologie**
 
@@ -517,7 +824,7 @@ res %>%
 
 **Constats :** On voit que notre modèle ne semble pas être en surapprentissage. L'EQM est de `r round(tree_model$rmse_val[[1]]$.estimate[1], 2)` sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la valeur observée est  $\sqrt{EQM}$ = ~`r round(sqrt(tree_model$rmse_val[[1]]$.estimate[1]), 2)`. On voit sans surprise que cette arbre de décision a surappris.
 
-### A.4 Modèle _Lasso_ {#lasso}
+### A.5 Modèle _Lasso_ {#lasso}
 
 Un modèle _Lasso_ est une méthode de contraction des coefficients. Comparé au modèle linéaire, ce modèle se voit ajouter une contrainte, soit une valeur maximale totale qu'il peut attribuer à l'ensemble de ses coefficients. Les coefficients du modèle sont établis en minimisant l'erreur quadratique au travers les observations avec la contrainte que la somme des coefficients ne peut pas dépasser une certaine valeur :
 
