@@ -749,3 +749,40 @@ graph_normalite_res <- function(res) {
    
 }
 
+# Graphique des résidus en fonction d'une variable explicative séparé par MAIN_RIV 
+
+graph_res_vs_var <- function(dt, res, var) {
+   
+   if ("var" %in% names(dt)) {
+      dt[, var := NULL]
+   }
+   dt[, var := dt[[var]]]
+   dt[, N_main_riv := .N, by = MAIN_RIV]
+   dt[, res := res]
+   
+   ggplot(
+      mapping = aes(
+         x = ria_ha_csu,
+         y = res,
+         color = as.factor(MAIN_RIV)
+      ),
+      alpha = 0.5,
+      data = dt[MAIN_RIV %in% sample(unique(train_dt[N_main_riv > 50]$MAIN_RIV), size = 5)]
+   ) +
+      geom_point() + 
+      geom_smooth(
+         formula = y ~ x,
+         method = "lm"
+      ) +
+      labs(
+         x = var,
+         y = "Résidus",
+         color = "MAIN_RIV"
+      ) + 
+      theme(
+         text = element_text(family = "Times New Roman")
+      )
+   
+}
+
+
