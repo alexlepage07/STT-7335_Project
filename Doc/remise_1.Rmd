@@ -379,3 +379,26 @@ Pour la troisième composante principale, on serait en présence de rivières qu
 Contrairement à la première composante principale, on n’observe pas de relation significative par rapport à des variables qui indiquent le volume de la rivière ou la quantité de précipitations. On remarque que la variable `dis_n3_pyr` est corrélée positivement de manière importante avec la seconde composante principale. 
 
 On constate que 78,9% de la variabilité de la variable dis_n3_pyr est expliquée par la seconde composante principale alors que c’est 0% pour la première composante principale et 8,8% pour la troisième composante principale. Néanmoins, il est plausible de penser que la première composante principale est corrélée avec la variable d’intérêt à cause de la quantité de pluie. Il est probable que la première composante principale soit en corrélation avec la variable d’intérêt mais de façon non linéaire.
+
+#### Arbre de décision
+```{r}
+library(rpart)# Pour l’arbre de décision
+library(rpart.plot) # Pour la représentation de l’arbre de décision
+   
+   taille_sample=floor(nrow(river_dt)*0.50); #taille de l'échantillon aléatoire pour construire un arbre (10%)
+   river_dt <- river_dt[sample(nrow(river_dt)), ] #Ajout de numéros de lignes au data set complet
+   sample_i<- river_dt[1:taille_sample, ] # construction d'un échantillon aléatoire pour construire un arbre
+   
+   nb_lignes <- floor((nrow(sample_i)*0.75)) #Nombre de lignes de l’échantillon d'apprentissage (75%)
+   sample_i <- sample_i[sample(nrow(sample_i)), ] #Ajout de numéros de lignes 
+   sample_i.train <- river_dt[1:nb_lignes,3:ncol(river_dt) ] #Échantillon d’apprentissage
+   sample_i.test <- river_dt[(nb_lignes+1):nrow(sample_i), 3:ncol(river_dt)] #Échantillon de test
+
+   sample_i.Tree <- rpart(dis_m3_pyr~.,data=sample_i.train,method="anova", control=rpart.control(minsplit=20,maxdepth = 10));
+   sample_i.Tree_Opt <- prune(sample_i.Tree,cp=sample_i.Tree$cptable[which.min(sample_i.Tree$cptable[,4]),1])
+   rpart.plot(sample_i.Tree_Opt,box.palette="Greys", extra= 1)
+
+
+
+```
+
