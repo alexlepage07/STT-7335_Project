@@ -78,6 +78,8 @@ res_0 <- lapply(
    }
 )
 
+names(res_0) <- names(train_dt)
+
 # Modèle avec une ordonnée à l'origine différent par MAIN_RIVER
 
 lmm_1 <- lmer(
@@ -116,39 +118,10 @@ res_1 <- lapply(
 
 names(res_1) <- names(train_dt)
 
-# Modèle 1 + une pente différente pour la variable ria_ha_csu
-
-lmm_2 <- lmer(
-   dis_m3_pyr ~ 
-      lka_pc_use +
-      ria_ha_csu + 
-      riv_tc_usu + 
-      gwt_cm_cav + 
-      slp_dg_cav + 
-      swc_pc_uyr + 
-      kar_pc_cse + 
-      riv_larg_csu + 
-      pre_spring_max_csu + 
-      wet_pc_u01 + 
-      cly_pc_uav +
-      glc_cl_cmj + 
-      wet_cl_cmj + 
-      lit_cl_cmj + 
-      I(sgr_dk_rav)^2 +
-      I(for_pc_use)^2 +
-      I(slp_dg_uav)^2 +
-      riv_tc_usu:ria_ha_csu  + 
-      (ria_ha_csu | MAIN_RIV),
-   data = train_dt,
-   REML = TRUE
-)
-
-## Modèle 3
-
 # Modèle 1 + une pente différente pour la variable ria_ha_csu (pente et ordonnée
 # non-corrélées)
 
-lmm_3 <- lmer(
+lmm_2 <- lmer(
    dis_m3_pyr ~ 
       lka_pc_use +
       ria_ha_csu + 
@@ -173,6 +146,35 @@ lmm_3 <- lmer(
    REML = TRUE
 )
 
+## Modèle 3
+
+# Modèle 1 + une pente différente pour la variable ria_ha_csu
+
+lmm_3 <- lmer(
+   dis_m3_pyr ~ 
+      lka_pc_use +
+      ria_ha_csu + 
+      riv_tc_usu + 
+      gwt_cm_cav + 
+      slp_dg_cav + 
+      swc_pc_uyr + 
+      kar_pc_cse + 
+      riv_larg_csu + 
+      pre_spring_max_csu + 
+      wet_pc_u01 + 
+      cly_pc_uav +
+      glc_cl_cmj + 
+      wet_cl_cmj + 
+      lit_cl_cmj + 
+      I(sgr_dk_rav)^2 +
+      I(for_pc_use)^2 +
+      I(slp_dg_uav)^2 +
+      riv_tc_usu:ria_ha_csu  + 
+      (ria_ha_csu | MAIN_RIV),
+   data = train_dt,
+   REML = TRUE
+)
+
 ## Modèle 4
 
 res_2 <- lapply(
@@ -184,9 +186,39 @@ res_2 <- lapply(
 
 names(res_2) <- names(train_dt)
 
-# Modèle 2 + une pente différente pour la variable lka_pc_use
+# Modèle 2 + une pente différente pour la variable lka_pc_use (pente et ordonnée
+# non-corrélées)
 
 lmm_4 <- lmer(
+   dis_m3_pyr ~ 
+      lka_pc_use +
+      ria_ha_csu + 
+      riv_tc_usu + 
+      gwt_cm_cav + 
+      slp_dg_cav + 
+      swc_pc_uyr + 
+      kar_pc_cse + 
+      riv_larg_csu + 
+      pre_spring_max_csu + 
+      wet_pc_u01 + 
+      cly_pc_uav +
+      glc_cl_cmj + 
+      wet_cl_cmj + 
+      lit_cl_cmj + 
+      I(sgr_dk_rav)^2 +
+      I(for_pc_use)^2 +
+      I(slp_dg_uav)^2 +
+      riv_tc_usu:ria_ha_csu  + 
+      (ria_ha_csu + lka_pc_use || MAIN_RIV),
+   data = train_dt,
+   REML = TRUE
+)
+
+## Modèle 5
+
+# Modèle 2 + une pente différente pour la variable lka_pc_use 
+
+lmm_5 <- lmer(
    dis_m3_pyr ~ 
       lka_pc_use +
       ria_ha_csu + 
@@ -211,33 +243,45 @@ lmm_4 <- lmer(
    REML = TRUE
 )
 
-## Modèle 4
+# Tests ------------------------------------------------------------------------
 
-# Modèle 2 + une pente différente pour la variable lka_pc_use (pente et ordonnée
-# non-corrélées)
 
-lmm_5 <- lmer(
-   dis_m3_pyr ~ 
-      lka_pc_use +
-      ria_ha_csu + 
-      riv_tc_usu + 
-      gwt_cm_cav + 
-      slp_dg_cav + 
-      swc_pc_uyr + 
-      kar_pc_cse + 
-      riv_larg_csu + 
-      pre_spring_max_csu + 
-      wet_pc_u01 + 
-      cly_pc_uav +
-      glc_cl_cmj + 
-      wet_cl_cmj + 
-      lit_cl_cmj + 
-      I(sgr_dk_rav)^2 +
-      I(for_pc_use)^2 +
-      I(slp_dg_uav)^2 +
-      riv_tc_usu:ria_ha_csu  + 
-      (ria_ha_csu + lka_pc_use || MAIN_RIV),
-   data = train_dt,
-   REML = TRUE
+lmtest::lrtest(lmm_1, lmm_2)
+lmtest::lrtest(lmm_2, lmm_3)
+lmtest::lrtest(lmm_3, lmm_4)
+lmtest::lrtest(lmm_4, lmm_5)
+
+
+# Analyse des résidus ----------------------------------------------------------
+
+final_model <- lmm_5
+
+res <- 
+   train_dt$dis_m3_pyr - predict(final_model, train_dt, allow.new.levels = TRUE)
+
+pred <- predict(final_model, train_dt, allow.new.levels = TRUE)
+
+graphs_res <- list(
+   res_vs_pred = graph_res_vs_pred(res, pred),
+   res_vs_etiq = graph_res_vs_etiquette(res, train_dt$MAIN_RIV),
+   res_qqplot = graph_normalite_res(res),
+   res_vs_var = res_0
 )
+
+
+# Sauvegarder le modèle résultant ----------------------------------------------
+
+
+info_ls <- list(
+   rmse_test = MLmetrics::RMSE(predict(final_model, test_dt, allow.new.levels = TRUE), test_dt$dis_m3_pyr),
+   rmse_val = MLmetrics::RMSE(predict(final_model, val_dt, allow.new.levels = TRUE), val_dt$dis_m3_pyr),
+   rmse_train = MLmetrics::RMSE(predict(final_model, train_dt, allow.new.levels = TRUE), train_dt$dis_m3_pyr),
+   model = final_model,
+   graphs_res = graphs_res,
+   res_train = res, 
+   res_test =  test_dt$dis_m3_pyr - predict(final_model, test_dt, allow.new.levels = TRUE)
+)
+
+saveRDS(info_ls, output_path_obj, compress = "xz")
+
 

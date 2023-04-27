@@ -219,7 +219,7 @@ On constate que 78,9% de la variabilité de la variable dis_n3_pyr est expliqué
 
 ### Pertinence du modèle
 
-Le modèle proposé pour notre analyse est un modèle mixte. En effet, ce dernier a l'avantage de prendre en considération la dépendance entre certaines observations, dépendance provenant du fait de leur proximité qui engendre des caractéristiques similaires qui ne sont pas mesurées et considérées comme variables explicatives^[p. 123, Notes de cours du cours STT-7125]. Le modèle mixte a, donc, l'avantage de considérer la corrélation entre les observations et, ainsi, modélisé adéquatement les résidus. La forme du modèle est tel que : 
+Le modèle proposé pour notre analyse est un modèle mixte. En effet, ce dernier a l'avantage de prendre en considération la dépendance entre certaines observations, dépendance provenant du fait de leur proximité qui engendre des caractéristiques similaires qui ne sont pas mesurées et considérées comme variables explicatives^[p. 123, Notes de cours du cours STT-7125]. Le modèle mixte a, donc, l'avantage de considérer la corrélation entre les observations et, ainsi, modéliser adéquatement les résidus. La forme du modèle est tel que : 
 
 $$\boldsymbol{Y} = \boldsymbol{X}\boldsymbol{\beta} + \boldsymbol{Z}\boldsymbol{\gamma} + \boldsymbol{\epsilon}$$
 
@@ -246,25 +246,8 @@ $$\boldsymbol{Z} = \begin{bmatrix}
 
 Puis, nous avons, finalement, la matrice $\boldsymbol{D}$. Cette dernière peut prendre plusieurs formes et nous allons tester dans notre analyse ces différentes formes possibles :
 
-- Même variance au travers les différentes rivières et aucune covariance entre les différentes rivières
-
-$$\boldsymbol{D} = \begin{bmatrix}
-\sigma^2 ~ 0~  0 ~ ... ~ 0\\
-0 ~ \sigma^2 ~ 0~ ... ~ 0\\
-0 ~ 0 ~ \sigma^2~ ... ~ 0\\
-... \\
-0 ~ 0 ~ 0~ ... ~ \sigma^2\\
-\end{bmatrix}_{3844 \times 3844}$$
-
-- Différentes variances au travers les différentes rivières et aucune covariance entre les différentes rivières
-
-$$\boldsymbol{D} = \begin{bmatrix}
-\sigma^2_1 ~ 0~  0 ~ ... ~ 0\\
-0 ~ \sigma^2_2 ~ 0~ ... ~ 0\\
-0 ~ 0 ~ \sigma^2_3~ ... ~ 0\\
-... \\
-0 ~ 0 ~ 0~ ... ~ \sigma^2_{3844}\\
-\end{bmatrix}_{3844 \times 3844}$$
+- Ordonnée à l'origine aléatoire
+- Pente aléatoire pour différentes variables
 
 ### Choix des métriques
 
@@ -272,11 +255,8 @@ Notre variable d'intérêt, soit le débit d'eau des rivières, est une variable
 
 - Erreur quadratique moyen (EQM)
 - Erreur absolue moyen (EAM)
-- Gini <span style="color:red">Il existe il me semble le Gini pour des variables continues</span>
 
-Nous prendrons l'erreur quatratique moyen autant pour évaluer nos modèles que comme métrique à minimiser lorsque nous optimisons les hyperparamètres pour certains modèles qui en ont.
-
-<span style="color:red">Justifier pourquoi on ne prendre pas EAM</span>
+Nous prendrons l'erreur quatratique moyen autant pour évaluer nos modèles comme métrique à minimiser lorsque nous optimisons les hyperparamètres pour certains modèles qui en ont. Nous favorisons l'erreur quadratique moyenne pour mettre plus d'importance à minimiser les valeurs extrêmes. Le modèle ne vise pas seulement à prédire les débits élevés, mais nous portons une certaine importance. 
 
 ### Stratégie de validation et choix des hyperparamètres
 
@@ -286,7 +266,7 @@ Par ailleurs, bien que nous avons une dépendance spatiale entre les observation
 
 ### Préselection de variables 
 
-Comme mentionné, pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité ainsi que la multicolinéarité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. En faisant ainsi, cela nous permet d'obtenir un modèle final plus interprétable et de diminuer les risques de surapprentissage^[Gregorutti, B. & Michel, B & Saint-Pierre, P. (2017). Correlation and variable importance in random forests. Statistics and Computing, v27 n3 (201705): 659-678.]. 
+Comme mentionné, pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité ainsi que la multicolinéarité. Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. En faisant ainsi, cela nous permet d'obtenir un modèle final plus interprétable et de diminuer les risques de surapprentissage^[Gregorutti, B. & Michel, B & Saint-Pierre, P. (2017). Correlation and variable importance in random forests. Statistics and Computing, v27 n3 (201705): 659-678.]. 
 
 Pour ce faire, nous entraînons une forêt aléatoire pour faire une sélection de variables basée sur leur importance. Par la suite, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et, ainsi, nous défaire de la multicolinéarité. Nous allons tenter de trouver des interactions à possiblement ajouter à notre modèle final en faisant une arbre de décision. Puis, nous entraînons un modèle avec régularisation, soit un modèle de type _Lasso_, pour finaliser cette sélection de variables.
 
@@ -494,9 +474,13 @@ Nous pouvons observer qu'en dessous d'une certaine valeur, nous obtenons toujour
 
 # Analyse, discussion et conclusion (2-3 pages)
 
-- Performance des modèles
-- Enjeux éthiques
-- Recommandation du modèle? 
+## Performance des modèles
+
+
+## Enjeux éthiques
+
+
+## Recommandation du modèle? 
 
 ## Annexe
 
@@ -909,5 +893,24 @@ res %>%
 
 ```
 **Constats :** L'EQM est de `r round(lasso_model$rmse_val[[1]]$.estimate[1], 2)` sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la valeur observée est  $\sqrt{EQM}$ = ~`r round(sqrt(lasso_model$rmse_val[[1]]$.estimate[1]), 2)`. On remarque que l'on a un EQM plus élevé qu'avec la forêt aléatoire. Toutefois, rappelons que bien que le modèle que nous allons proposer est peut-être moins performant, le modèle est beaucoup plus interprétable.
+
+### A.5 Modèle mixte {#mixte}
+
+**Méthodologie** :
+1. Identification des effets aléatoires à tester
+À partir du modèle _Lasso_ qui ne contient aucun effet aléatoire, nous avons regardé les graphiques des résidus par rapport à différentes variables pour avoir un indication si des effets aléatoires seraient nécessaires, et ce, au travers la structure de dépendance basée sur la rivière commune en aval. Nous observons avec les graphiques suivants qu'un ordonnée à l'origine aléatoire ainsi que des pentes aléatoires pour les variables _ria_ha_csu_ (aire de la rivière) et _riv_tc_usu_ (volume de la rivière) seraient pertinente :
+
+```{r}
+
+info_ls$graphs_res$res_vs_var$ria_ha_csu
+
+```
+
+
+2. Choix de la structure de covariance
+Nous testons plusieurs options :
+- C
+
+
 
 
