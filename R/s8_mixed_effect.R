@@ -38,7 +38,7 @@ inst_load_packages(libs)
 
 
 input_path <- "Data/s7_donnees_lasso_var_sel.rds"
-output_path_obj <- "inst/s7_mixed_effect.rds"
+output_path_obj <- "inst/s8_mixed_effect.rds"
 lasso_model_path <- "inst/s7_lasso.rds"
 
 
@@ -54,11 +54,8 @@ stopifnot("data.table" %in% class(river_dt))
 
 
 set.seed(7335)
-split_dt <- initial_split(river_dt, prop = 0.85)
+split_dt <- initial_split(river_dt, prop = 0.70)
 train_dt <- training(split_dt) 
-split_train_dt <- initial_split(train_dt, prop = 1 - 0.15/0.85)
-train_dt <- training(split_train_dt)
-val_dt  <- testing(split_train_dt)
 test_dt  <- testing(split_dt)
 
 
@@ -72,7 +69,7 @@ test_dt  <- testing(split_dt)
 # relation est différente.
 
 res_0 <- lapply(
-   names(train_dt), 
+   names(train_dt),
    function(x) {
       graph_res_vs_var(train_dt, lasso_model$res, x)
    }
@@ -246,11 +243,12 @@ lmm_5 <- lmer(
 # Tests ------------------------------------------------------------------------
 
 
-lmtest::lrtest(lmm_1, lmm_2)
-lmtest::lrtest(lmm_2, lmm_3)
-lmtest::lrtest(lmm_3, lmm_4)
-lmtest::lrtest(lmm_4, lmm_5)
-
+rapport_vrais_test <- list(
+   lmm_1_2 = lmtest::lrtest(lmm_1, lmm_2),
+   lmm_2_3 = lmtest::lrtest(lmm_2, lmm_3),
+   lmm_3_4 = lmtest::lrtest(lmm_3, lmm_4),
+   lmm_4_5 = lmtest::lrtest(lmm_4, lmm_5)
+)
 
 # Analyse des résidus ----------------------------------------------------------
 
@@ -274,12 +272,9 @@ graphs_res <- list(
 
 info_ls <- list(
    rmse_test = MLmetrics::RMSE(predict(final_model, test_dt, allow.new.levels = TRUE), test_dt$dis_m3_pyr),
-   rmse_val = MLmetrics::RMSE(predict(final_model, val_dt, allow.new.levels = TRUE), val_dt$dis_m3_pyr),
    rmse_train = MLmetrics::RMSE(predict(final_model, train_dt, allow.new.levels = TRUE), train_dt$dis_m3_pyr),
-   model = final_model,
    graphs_res = graphs_res,
-   res_train = res, 
-   res_test =  test_dt$dis_m3_pyr - predict(final_model, test_dt, allow.new.levels = TRUE)
+   rapport_vrais_test = rapport_vrais_test
 )
 
 saveRDS(info_ls, output_path_obj, compress = "xz")
