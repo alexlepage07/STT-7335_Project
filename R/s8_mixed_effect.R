@@ -273,8 +273,8 @@ graphs_res <- list(
 info_ls <- list(
    rmse_test = MLmetrics::RMSE(predict(final_model, test_dt, allow.new.levels = TRUE), test_dt$dis_m3_pyr),
    rmse_train = MLmetrics::RMSE(predict(final_model, train_dt, allow.new.levels = TRUE), train_dt$dis_m3_pyr),
-   bias_test = mean((test_dt$dis_m3_pyr - predict(final_model, test_dt, allow.new.levels = TRUE))^2),
-   bias_train = mean((train_dt$dis_m3_pyr - predict(final_model, train_dt, allow.new.levels = TRUE))^2),
+   bias_test = mean(test_dt$dis_m3_pyr - predict(final_model, test_dt, allow.new.levels = TRUE))^2,
+   bias_train = mean(train_dt$dis_m3_pyr - predict(final_model, train_dt, allow.new.levels = TRUE))^2,
    var_test = var(predict(final_model, test_dt, allow.new.levels = TRUE)),
    var_train = var(predict(final_model, train_dt, allow.new.levels = TRUE)),
    graphs_res = graphs_res,
