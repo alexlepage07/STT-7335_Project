@@ -383,6 +383,15 @@ res %>%
 
 ## Enjeux éthiques
 
+Il y a très peu d’aspects éthiques liés au projet en lui-même. Les données utilisées ne sont ni privées ni sensibles, l’enjeu du projet est de prédire des débits d’eau, donc rien de vraiment problématique niveau éthique.
+
+Concernant la transparence, nous avons documenté toutes les justifications et les explications concernant les méthodes utilisées dans le projet et leur pertinence. Le traitement des données manquantes a été justifié lorsqu’il le fallait. 
+
+Le plus gros enjeu éthique réside dans l’utilisation du projet. La prédiction des débits d’eau peut être utilisée dans le domaine de l’assurance, là où l’assureur voudra rentabiliser et éviter les grosses pertes liées aux sinistres des assurés. L’assureur pourra donc procéder à une adaptation du prix de l’offre voire même une suppression de certaines zones géographiques de l’offre. Du point de vue de l’assureur, ce sera une très bonne chose car des économies seront faites grâce à l’utilisation du modèle. Du point de vue des assurés, selon leur localisation ils verront le coût de leur assurance grimper ou seront exclus de l’offre. Assurer sa propriété est obligatoire, alors ces habitants se retrouveront dans un situation compliquée. 
+
+Cet exemple permet de conclure que le projet respecte globalement les différents principes de l’éthique mais son utilisation, notamment en assurance, peut porter atteinte à l’équité. 
+
+
 
 ## Recommandation du modèle? 
 
