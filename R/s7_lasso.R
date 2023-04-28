@@ -278,7 +278,9 @@ vars <- coefs@Dimnames[[1]][coefs@i + 1][-1]
 
 # vector_paste_vertical(vars)
 
-river_dt <- river_dt[, c("lka_pc_use",
+river_dt <- river_dt[, c("dis_m3_pyr",
+                         "MAIN_RIV",
+                         "lka_pc_use",
                          "ria_ha_csu",
                          "riv_tc_usu",
                          "gwt_cm_cav",
@@ -297,9 +299,28 @@ river_dt <- river_dt[, c("lka_pc_use",
                          "cly_pc_uav",
                          "glc_cl_cmj",
                          "wet_cl_cmj",
-                         "lit_cl_cmj",
+                         "lit_cl_cmj"
                          # ria_ha_csu x riv_tc_usu
-                         ), with = FALSE]
+), with = FALSE]
+
+river_dt$glc_cl_cmj <- factor(
+   fifelse(
+      river_dt$glc_cl_cmj %in% c(4, 14), as.numeric(river_dt$glc_cl_cmj), 999
+   )
+)
+
+river_dt$wet_cl_cmj <- factor(
+   fifelse(
+      river_dt$wet_cl_cmj %in% c(8, 10, 11), as.numeric(river_dt$wet_cl_cmj), 999
+   )
+)
+
+river_dt$lit_cl_cmj <- factor(
+   fifelse(
+      river_dt$lit_cl_cmj %in% c(5, 9), as.numeric(river_dt$lit_cl_cmj), 999
+   )
+)
+
 
 
 # Comparaison prédit/observés --------------------------------------------------

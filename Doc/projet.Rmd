@@ -24,6 +24,7 @@ knitr::opts_chunk$set(
 path_data <- "../Data"
 path_obj <- "../inst"
 path_fct <- "../R"
+shape_file_path <- "../Data/RiverATLAS_Data_v10_shp/RiverATLAS_v10_shp"
 
 
 # Charger les objets -----------------------------------------------------------
@@ -34,6 +35,7 @@ rf_model <- readRDS(file.path(path_obj, "s5_random_forest.rds"))
 pca <- readRDS(file.path(path_obj, "s6_pca.rds"))
 lasso_model <- readRDS(file.path(path_obj, "s7_lasso.rds"))
 tree_model <- readRDS(file.path(path_obj, "s6_decision_tree.rds"))
+mixed_model <- readRDS(file.path(path_obj, "s8_mixed_effect.rds"))
 
 river_dt <- readRDS(file.path(path_data, "s3_donnees_standardisees.rds"))
 
@@ -49,7 +51,8 @@ source(file.path(path_fct, "utils.R"))
 
 libs <- c("data.table",
           "glmnet",
-          "rpart.plot")
+          "rpart.plot",
+          "terra")
 
 inst_load_packages(libs)
 
@@ -69,16 +72,7 @@ Par ailleurs, comme ce projet est purement exploratoire et vise uniquement à te
 À noter que, bien que [Chaduri et al., 2021](@chaudhuri2021inundated) fait ses prédiction sur la médiane, nous nous concentrerons sur la moyenne des débits annuels. La raison étant que les modèles mixtes standards sont fait pour estimer la moyenne d'une distribution normales et que les données de RiverAtlas ne fournissent que cette information et non pas les quantiles ou toutes les observations historiques.
 
 
-## Préparation et nettoyage des données (1 page)
-
-- Source
-- Description
-- Type de variables
-- Vérifier les doublons
-- Vérifier les erreurs de saisie
-- Uniformisation des valeurs
-- Validation de fusion de tables
-
+## Préparation et nettoyage des données
 
 Nous utilisons les données de l'HydroAtlas^[Pour en apprendre d'avantage sur les données utilisées, consultez le site internet d'HydoSheds à l'adresse suivante: https://data.hydrosheds.org/file/technical-documentation/HydroATLAS_TechDoc_v10_1.pdf], provenant du site de [HydroSheds](https://www.hydrosheds.org/hydroatlas) pour tenter de prédire le débit moyen des rivières pour un bassin versant donné. 
 Nous focalisons nos efforts dans la province du Québec en prenant les données nord-américaine et en rognant les fichiers de formes (shapefiles) autour de la province. Le jeu de données ainsi créé contient 162 507 observations et 295 variables disponibles. Chaque observations du jeu de données correspond à un bassin versant et les variables représentent des données utiles pour effectuer des études hydrologiques, telles que les précipitations, le volume d'eau en amont, la pente hydrique, etc. La variable d'intérêt est la suivante: `dis_m3_pyr`. Celle-ci représente la moyenne annuelle des débits d'eau en 
@@ -97,16 +91,7 @@ Pour ce qui est de la variable `dor_pc_pva`, celle-ci représente la capacité d
 En ce qui attrait à la variable `lka_pc_cse`, celle-ci réfère au pourcentage du bassin versant occupé par des lacs. La raison pour laquelle cette variable atteignait le millier est qu'un entier occupe moins d'espace de stockage qu'un nombre réel. Or, par souci de précision, les chercheurs ayant travaillé sur cette variables ont choisit de conserver trois décimales. Ce faisant 0.001 est noté 1 et 0.999 est noté 999. Ainsi, nous avons laissé cette variable telle quelle puisque, de toute façon, lors de l'étape de l'ACP, nous normalisons les variables.
 
 
-## Analyse descriptive et exploratoire (2-3 pages)
-
-- Type d’échantillon
-- Nombre d'observations et variables
-- Analyse descriptive uni et multivariées
-- Identification des valeurs extrêmes et aberrantes (+ traitées)
-- Gestion des données manquantes 
-Doit se faire sur la jeu de données d'entraînement (voir p.245 ESL)
-- Création de nouvelles variables
-- Identification de la dépendance
+## Analyse descriptive et exploratoire
 
 ### Analyse de l'échantillon
 
@@ -116,12 +101,12 @@ Pour chaque variable, les données ont été réanalysées de sorte à minimiser
 
 Nous allons donc analyser les différentes sources de biais et d’inexactitudes dans les données. Pour commencer, l’étendue des années de collecte des observations est très large, en effet, certaines observations datent du début des années 2000 et d’autres de la fin des années 2010. Dans notre jeu de données nous nous intéressons surtout aux moyennes, alors l’influence de cet aspect sur nos observations reste faible. De plus, La réanalyse effectuée devrait en théorie pouvoir corriger les erreurs et réduire les risques liées à l’écart d’âge des observations. 
 
- De plus, des variables sont arbitrairement bornées par les collecteurs. La variable Stream Gradient est limitée entre 60°N et 83°S par exemple. Les valeurs extrêmes sont donc par conséquent retirées du jeu de données. Cela implique directement une sous-estimation de la variance. Le nombre de données manquantes est également augmenté par ce procédé, ce qui induira possiblement un nouveau biais, selon le traitement de ces valeurs manquantes. 
- 
- On remarque également une réduction des valeurs pouvant être prises par des variables pour faciliter l’utilisation des données, on peut par exemple le voir sur les variables Climate Strata et Climate Zones. En effet, les observations initiales découpaient les zones et les couches climatiques en 125 catégories et par soucis de facilité, ces catégories ont été elles-mêmes regroupées en 18 catégories plus larges. On risque alors de mettre dans la même catégorie deux zones de climat relativement différentes. 
- 
- Enfin, une bonne partie des variables résulte de spéculations ou de projections dans le futur suivant des modèles. Les modèles d’évolution construits ont en général des hypothèses restrictives et possiblement des hyperparamètres à définir. En accord avec le compromis biais-variance, la complexité de ces modèles engendre une variance relativement grande entrainant alors un surapprentissage. Les valeurs prédites et l’erreur de généralisation en seront donc affectées. Mais encore, il peut exister différents modèles d’évolution pour un même phénomène, menant donc à faire un choix arbitraire. Comme exemple on peut citer la variable Potential Evapotranspiration, où l’auteur précise que le choix du modèle a été fait en fonction des résultats obtenus pour l’Afrique et l’Amérique du Sud. Le modèle peut donc être moins fiable pour les autres continents. Le même phénomène s’applique pour la variable de la végétation potentielle sans activité humaine dont le modèle a été principalement testée dans les localisations où l’activité humaine est très faible ou encore la progression des glaciers ou des permafrost dont le modèle est paramétré en fonction d’estimations de glaciers et permafrost sur la période 1961-1990. 
- 
+De plus, des variables sont arbitrairement bornées par les collecteurs. La variable Stream Gradient est limitée entre 60°N et 83°S par exemple. Les valeurs extrêmes sont donc par conséquent retirées du jeu de données. Cela implique directement une sous-estimation de la variance. Le nombre de données manquantes est également augmenté par ce procédé, ce qui induira possiblement un nouveau biais, selon le traitement de ces valeurs manquantes. 
+
+On remarque également une réduction des valeurs pouvant être prises par des variables pour faciliter l’utilisation des données, on peut par exemple le voir sur les variables Climate Strata et Climate Zones. En effet, les observations initiales découpaient les zones et les couches climatiques en 125 catégories et par soucis de facilité, ces catégories ont été elles-mêmes regroupées en 18 catégories plus larges. On risque alors de mettre dans la même catégorie deux zones de climat relativement différentes. 
+
+Enfin, une bonne partie des variables résulte de spéculations ou de projections dans le futur suivant des modèles. Les modèles d’évolution construits ont en général des hypothèses restrictives et possiblement des hyperparamètres à définir. En accord avec le compromis biais-variance, la complexité de ces modèles engendre une variance relativement grande entrainant alors un surapprentissage. Les valeurs prédites et l’erreur de généralisation en seront donc affectées. Mais encore, il peut exister différents modèles d’évolution pour un même phénomène, menant donc à faire un choix arbitraire. Comme exemple on peut citer la variable Potential Evapotranspiration, où l’auteur précise que le choix du modèle a été fait en fonction des résultats obtenus pour l’Afrique et l’Amérique du Sud. Le modèle peut donc être moins fiable pour les autres continents. Le même phénomène s’applique pour la variable de la végétation potentielle sans activité humaine dont le modèle a été principalement testée dans les localisations où l’activité humaine est très faible ou encore la progression des glaciers ou des permafrost dont le modèle est paramétré en fonction d’estimations de glaciers et permafrost sur la période 1961-1990. 
+
 On peut également noter que l’année 2000 est prise en référence pour plusieurs variables sans explications pertinentes. On suppose que la raison principale réside dans le fait que les premières mesures « précises » ont été prises autour de cette année ou que l’année 2000 marque le début du siècle. L’arrivée de nouvelles technologies dans la collecte de données, notamment des satellites, ont révolutionné la collecte de données, ce qui justifie, au moins en partie, que l’on considère l’année 2000 comme référence. 
 
 ### Analyse et gestion des données manquantes
@@ -165,15 +150,15 @@ Cette analyse préliminaire des distributions suggère que nous ne sommes pas en
 
 Pour poursuivre notre analyse, nous exposons dans le tableau 2.1.4 (Annexe A1) l'ensemble des _test-t_'s possibles pour comparer la moyenne des autres variables pour les observations faisant parties du patron et celle pour les observations ne faisant pas parties du patron.
 
-Nous remarquons que `r sum(t_test_res$p_value < 0.05)` tests ont un seuil observé en dessous de 5%. Cela signifie que pour ces tests la moyenne de la variable évaluée est significativement différente en présence ou non du patron de non-réponse.
+Nous remarquons que 39 tests ont un seuil observé en dessous de 5%. Cela signifie que pour ces tests la moyenne de la variable évaluée est significativement différente en présence ou non du patron de non-réponse.
 
-En revanche, faire autant de _test-t_'s a ses limites. En effet, puisque nous faisons au total `r nrow(t_test_res)`, nous avons le problème de comparaisons multiples qui implique que, même si toutes les moyennes étaient réellement égales, une partie des tests seraient rejetée. Or, dans notre cas, une très grande partie le sont ce qui appuie notre hypothèse comme quoi les données ne sont pas manquantes complètement aléatoirement.
+En revanche, faire autant de _test-t_'s a ses limites. En effet, puisque nous faisons au total 44, nous avons le problème de comparaisons multiples qui implique que, même si toutes les moyennes étaient réellement égales, une partie des tests seraient rejetée. Or, dans notre cas, une très grande partie le sont ce qui appuie notre hypothèse comme quoi les données ne sont pas manquantes complètement aléatoirement.
 
 Pour valider nos analyses préliminaires, nous utilisons le test de _Little_, qui calcule une statistique telle que :
 $$d^2 = \sum_{j = 1}^J (\hat{\mu}_j - \hat{\mu}_j^{ML})\hat\Sigma_j^{-1}(\hat{\mu}_j - \hat{\mu}_j^{ML})$$
 Si les données sont manquantes de façon complètement aléatoire, nous aurons que $$d^2 \sim \chi_{\sum_{j=1}^J k_j-k}.$$ 
 
-En utilisant la formule `naniar::mcar_test`, nous obtenons que le seuil observé est de `r res$p.value` qui confirme notre hypothèse. On rejette, donc, l'hypothèse $H_0 :$ Données manquantes avec un mécanisme _MCAR_.
+En utilisant la formule `naniar::mcar_test`, nous obtenons que le seuil observé est de 0 qui confirme notre hypothèse. On rejette, donc, l'hypothèse $H_0 :$ Données manquantes avec un mécanisme _MCAR_.
 
 #### Conclusion de l'analyse
 En conclusion, comme la non-réponse pouvait être prédite selon la variable de
@@ -186,7 +171,7 @@ Néanmoins, l'objectif de ce travail est de prédire le débit d'eau des rivièr
 
 ### Réduction de la dimensionalité par ACP
 
-#### mise en oeuvre et résultat
+#### Mise en oeuvre et résultat
 
 Notre objectif avec cette analyse en composantes principales était de faire un prétraitement des données. Nous avons été en mesure d’établir certaines relations entre différentes variables. On présente ces relations dans les lignes ci-dessous. 
 
@@ -215,17 +200,17 @@ Contrairement à la première composante principale, on n’observe pas de relat
 
 On constate que 78,9% de la variabilité de la variable dis_n3_pyr est expliquée par la seconde composante principale alors que c’est 0% pour la première composante principale et 8,8% pour la troisième composante principale. Néanmoins, il est plausible de penser que la première composante principale est corrélée avec la variable d’intérêt à cause de la quantité de pluie. Il est probable que la première composante principale soit en corrélation avec la variable d’intérêt mais de façon non linéaire.
 
-## Modélisation et validation (1-2 pages)
+## Modélisation et validation
 
 ### Pertinence du modèle
 
-Le modèle proposé pour notre analyse est un modèle mixte. En effet, ce dernier a l'avantage de prendre en considération la dépendance entre certaines observations, dépendance provenant du fait de leur proximité qui engendre des caractéristiques similaires qui ne sont pas mesurées et considérées comme variables explicatives^[p. 123, Notes de cours du cours STT-7125]. Le modèle mixte a, donc, l'avantage de considérer la corrélation entre les observations et, ainsi, modélisé adéquatement les résidus. La forme du modèle est tel que : 
+Le modèle proposé pour notre analyse est un modèle mixte. En effet, ce dernier a l'avantage de prendre en considération la dépendance entre certaines observations, dépendance provenant du fait de leur proximité qui engendre des caractéristiques similaires qui ne sont pas mesurées et considérées comme variables explicatives^[p. 123, Notes de cours du cours STT-7125]. Le modèle mixte a, donc, l'avantage de considérer la corrélation entre les observations et, ainsi, modéliser adéquatement les résidus. La forme du modèle est tel que : 
 
 $$\boldsymbol{Y} = \boldsymbol{X}\boldsymbol{\beta} + \boldsymbol{Z}\boldsymbol{\gamma} + \boldsymbol{\epsilon}$$
 
 Où $\boldsymbol{\gamma}\sim N_K(0, D)$ et $D$ est la matrice de variance-covariance entre les observations.
 
-Dans notre cas, nous avons identifié qu'il existe une dépendance non pas de la localisation, mais plutôt au travers les rivières et dans quel bassin elle se jettent. Ainsi, deux rivières qui se déversent dans le même bassin seront considérées dépendantes au travers les effets aléatoires de notre modèle. Ainsi, on obtient :
+Dans notre cas, nous avons identifié qu'il existe une dépendance basée sur la localisation, mais plutôt au travers les rivières et dans quel bassin elles se déversent. Ainsi, deux rivières qui se déversent dans le même bassin seront considérées dépendantes au travers les effets aléatoires de notre modèle. Ainsi, on obtient :
 
 $$\boldsymbol{\gamma}_{\text{main_riv}} = \begin{bmatrix}
 \gamma_{\text{main_riv}, 1}\\
@@ -246,25 +231,8 @@ $$\boldsymbol{Z} = \begin{bmatrix}
 
 Puis, nous avons, finalement, la matrice $\boldsymbol{D}$. Cette dernière peut prendre plusieurs formes et nous allons tester dans notre analyse ces différentes formes possibles :
 
-- Même variance au travers les différentes rivières et aucune covariance entre les différentes rivières
-
-$$\boldsymbol{D} = \begin{bmatrix}
-\sigma^2 ~ 0~  0 ~ ... ~ 0\\
-0 ~ \sigma^2 ~ 0~ ... ~ 0\\
-0 ~ 0 ~ \sigma^2~ ... ~ 0\\
-... \\
-0 ~ 0 ~ 0~ ... ~ \sigma^2\\
-\end{bmatrix}_{3844 \times 3844}$$
-
-- Différentes variances au travers les différentes rivières et aucune covariance entre les différentes rivières
-
-$$\boldsymbol{D} = \begin{bmatrix}
-\sigma^2_1 ~ 0~  0 ~ ... ~ 0\\
-0 ~ \sigma^2_2 ~ 0~ ... ~ 0\\
-0 ~ 0 ~ \sigma^2_3~ ... ~ 0\\
-... \\
-0 ~ 0 ~ 0~ ... ~ \sigma^2_{3844}\\
-\end{bmatrix}_{3844 \times 3844}$$
+- Ordonnée à l'origine aléatoire
+- Pente aléatoire pour différentes variables
 
 ### Choix des métriques
 
@@ -272,21 +240,18 @@ Notre variable d'intérêt, soit le débit d'eau des rivières, est une variable
 
 - Erreur quadratique moyen (EQM)
 - Erreur absolue moyen (EAM)
-- Gini <span style="color:red">Il existe il me semble le Gini pour des variables continues</span>
 
-Nous prendrons l'erreur quatratique moyen autant pour évaluer nos modèles que comme métrique à minimiser lorsque nous optimisons les hyperparamètres pour certains modèles qui en ont.
-
-<span style="color:red">Justifier pourquoi on ne prendre pas EAM</span>
+Nous prendrons l'erreur quatratique moyen autant pour évaluer nos modèles comme métrique à minimiser lorsque nous optimisons les hyperparamètres pour certains modèles qui en ont. Nous favorisons l'erreur quadratique moyenne pour mettre plus d'importance à minimiser les valeurs extrêmes. Le modèle ne vise pas seulement à prédire les débits élevés, mais nous portons une certaine importance à ces dernières (en vu que le modèle soit capable de prédire des cas extrêmes pour évaluer, par exemple, les risques d'inondation). 
 
 ### Stratégie de validation et choix des hyperparamètres
 
-Notre stratégie de validation est de séparer notre jeu de données en 3 parties soit une pour l'entraînement (70%), une pour la validation des modèles et leur comparaison entre eux (15%), et une pour tester notre modèle final (15%). Pour faire la sélection d'hyperparamètres, nous faisons une validation croisée à partir  du jeu d'entraînement. Pour estimer l'erreur de généralisation basée sur ces hyperparamètres optimaux, nous allons utiliser le jeu de validation. La raison pourquoi nous n'estimons pas l'erreur de généralisation sur notre jeu d'entraînement (et pourquoi nous avons ajouté un jeu de validation) est que si nous estimons l'erreur sur le jeu d'entraînement avec des hyperparamètre qui ont été choisis pour l'optimiser, nous allons possiblement sous-estimer notre erreur de généralisation puisque nous estimons une erreur avec des hyperparamètres qui la minimise. Ainsi, pour avoir un portrait adéquat de l'erreur de généralisation, nous utilisons le jeu de validation pour faire cette estimation. 
+Notre stratégie de validation est de séparer notre jeu de données en 3 parties soit une pour l'entraînement (70%), une pour la validation des modèles et leur comparaison entre eux (15%), et une pour tester notre modèle final (15%). Pour faire la sélection d'hyperparamètres, nous faisons une validation croisée à partir  du jeu d'entraînement. Pour estimer l'erreur de généralisation basée sur ces hyperparamètres optimaux, nous allons utiliser le jeu de validation. La raison pourquoi nous n'estimons pas l'erreur de généralisation sur notre jeu d'entraînement (et pourquoi nous avons ajouté un jeu de validation) est que si nous estimons l'erreur sur le jeu d'entraînement avec des hyperparamètre qui ont été choisis pour l'optimiser, nous allons possiblement sous-estimer notre erreur de généralisation puisque nous estimons une erreur avec des hyperparamètres qui la minimise. Ainsi, pour avoir un portrait adéquat de l'erreur de généralisation, nous utilisons le jeu de validation pour faire cette estimation. Pour le modèle mixte qui ne nécessite pas d'optimisation d'hyperparamètres, nous combinons le jeu de validation et le jeu de test.
 
 Par ailleurs, bien que nous avons une dépendance spatiale entre les observations, nous n'allons pas user de la validation croisée par bloc pour tenir en compte cette dépendance ou encore séparer notre jeu de données en 3 de façon à faire en sorte que les observations qui ont des dépendances entre elles se trouvent dans le même jeu de données . En effet, tel que spécifier dans l'article _Cross-validation strategies for data with temporal, spatial, hierarchical, or phylogenetic structure_^[p.917, mettre la référence], lorsqu'un modèle est créé dans le but de faire des prédictions dans les mêmes territoires (donc, la même structure de dépendance) que ceux vus par le modèle en entraînement, il n'est pas recommandé d'utiliser une telle stratégie de validation, car elle peut mener à biaiser l'estimation de l'erreur de généralisation. En effet, une validation croisée par bloc ou une séparation du jeu de données considérant la dépendance aura comme effet de venir surestimer l'estimation de l'erreur de généralisation, comme elle viendra estimer l'effet de faire des prédictions sur de nouveaux territoires, ce qui n'est pas l'usage désiré de ce modèle. 
 
 ### Préselection de variables 
 
-Comme mentionné, pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité ainsi que la multicolinéarité (<span style="color:red">mettre une référence</span>). Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. En faisant ainsi, cela nous permet d'obtenir un modèle final plus interprétable et de diminuer les risques de surapprentissage^[Gregorutti, B. & Michel, B & Saint-Pierre, P. (2017). Correlation and variable importance in random forests. Statistics and Computing, v27 n3 (201705): 659-678.]. 
+Comme mentionné, pour modéliser le débit d'eau des rivières, nous allons utiliser un modèle mixte. Une caractéristique importante à soulever concernant ce modèle est qu'il a la caractéristique de ne pas bien tolérer la haute dimensionnalité ainsi que la multicolinéarité. Ainsi, comme notre jeu de données contient plusieurs variables (~50), nous faisons, avant l'étape de modélisation, une préselection de variables. En faisant ainsi, cela nous permet d'obtenir un modèle final plus interprétable et de diminuer les risques de surapprentissage^[Gregorutti, B. & Michel, B & Saint-Pierre, P. (2017). Correlation and variable importance in random forests. Statistics and Computing, v27 n3 (201705): 659-678.]. 
 
 Pour ce faire, nous entraînons une forêt aléatoire pour faire une sélection de variables basée sur leur importance. Par la suite, nous faisons une analyse des composantes principales pour orthogonaliser les variables explicatives et, ainsi, nous défaire de la multicolinéarité. Nous allons tenter de trouver des interactions à possiblement ajouter à notre modèle final en faisant une arbre de décision. Puis, nous entraînons un modèle avec régularisation, soit un modèle de type _Lasso_, pour finaliser cette sélection de variables.
 
@@ -300,9 +265,7 @@ Avant de faire une présélection des variables à partir de la forêt aléatoir
 
 #### Forêt aléatoire 
 
-La forêt aléatoire entraînée pour la préselection a été construite à partir de la librairie R _ranger_ (en [annexe](#random_forest) se retrouve les détails sur la méthodologie et les performances du modèl). L'importance des variables est obtenu à partir de la permutation des variables explicatives du jeu de données _Out of the Bag_ (OOB). Comme décrit dans _ELS_^[The elements of statistical learning : data mining, inference, and prediction, p. 593], l'idée générale est que, pour chaque arbre, nous avons un jeu de donnée laissé à part (OOB) que nous utilisons pour calculer, pour chaque variable explicatives, l'augmentation de l'erreur ou la diminution de l'exactitude entre les prédictions du jeu de données non-modifié et celles du jeu de données où nous permutons les valeurs de la variable évaluée. À chaque itération, en venant calculer l'impact sur un jeu de données indépendant des données vues par l'arbre entraîné, nous avons un portrait adéquat des variables importantes en généralisation, et non, importantes pour entraîner le modèle. Dans la librairie _ranger_, l'importance des variables est calculé à partir de la méthode décrite dans l'article _A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif_^[Janitza, S., Celik, E. & Boulesteix, A.-L., (2015). A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif doi: 10.1007/s116340160276- 4]. Mentionner ça : https://stats.stackexchange.com/questions/141619/wont-highly-correlated-variables-in-random-forest-distort-accuracy-and-feature
-
-<span style="color:red">Quelle mesure de performance pour l'importance? Comment l'interpréter? À ajouter pour trouver les limites possibles</span>
+La forêt aléatoire entraînée pour la préselection a été construite à partir de la librairie R _ranger_ (en [annexe](#random_forest) se retrouve les détails sur la méthodologie et les performances du modèl). L'importance des variables est obtenu à partir de la permutation des variables explicatives du jeu de données _Out of the Bag_ (OOB). Comme décrit dans _ELS_^[The elements of statistical learning : data mining, inference, and prediction, p. 593], l'idée générale est que, pour chaque arbre, nous avons un jeu de donnée laissé à part (OOB) que nous utilisons pour calculer, pour chaque variable explicatives, l'augmentation de l'erreur ou la diminution de l'exactitude entre les prédictions du jeu de données non-modifié et celles du jeu de données où nous permutons les valeurs de la variable évaluée. À chaque itération, en venant calculer l'impact sur un jeu de données indépendant des données vues par l'arbre entraîné, nous avons un portrait adéquat des variables importantes en généralisation, et non, importantes pour entraîner le modèle. Dans la librairie _ranger_, l'importance des variables est calculé à partir de la méthode décrite dans l'article _A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif_^[Janitza, S., Celik, E. & Boulesteix, A.-L., (2015). A computationally fast variable importance test for random forests for high-dimensional data. Adv Data Anal Classif doi: 10.1007/s116340160276- 4].
 
 Nous affichons les `r (nb_var <- 25)` variables les plus importantes basée sur la méthode précédemment décrite :
 
@@ -320,107 +283,6 @@ rf_nb_vars <- length(which(rf_model$model$variable.importance > 5))
 ```
 
 Pour sélectionner les variables, plusieurs options s'offrent à nous. Nous pouvons sélectionner soient un nombre fixé de variables explicatives. Également, nous pouvons couper à partir d'un certain seuil d'importance de variable. Nous avons décidé de garder que les variables qui ont un niveau d'importance supérieur à 5 ce qui nous a mené à conserver `r rf_nb_vars` variables.
-
-#### Analyse des composantes principales
-
-Nous faisons, donc, une analyse des composantes principales avec la fonction `PCA` de la librairie `FactoMineR`. Celle-ci standardise, par défaut, nos variables. <span style="color:red"> Pourquoi on a nous-même standardisée? </span> L'objectif de cette analyse des composantes principales est d'orthogonaliser nos variables pour ensuite les utiliser comme variables explicatives pour le modèle mixte. Nous faisons l'analyse des composantes principales sur l'ensemble du jeu de données comme cette procédure ne fait pas appel à la variable d'intérêt.
-
-```{r}
-
-
-eig_dt <- as.data.table(pca$eig, keep.rownames = TRUE)
-names(eig_dt) <- c("comp", "eigenvalue", "pourc_var", "cum_pouc_var")
-w <- which(eig_dt[order(cum_pouc_var)][["cum_pouc_var"]] > 80)
-
-
-```
-
-Nous choisissons le nombre de composantes que nous conservons. Pour ce, nous appliquons la règle du 80%, la règle de _Joliffe_ ainsi que celle de _Cattell_ :
-
-<div style="display: flex; justify-content: center;">
-
-<div style="padding-right: 80px;">
-
-**Règle du 80%**
-
-```{r}
-
-
-# Afficher la variance cumulée expliquée par composante
-graph_pca_var_cum(pca, threshold = 80)
-
-
-```
-
-</div>
-
-<div style="padding-right: 80px;">
-
-**Règle de _Joliffe_**
-
-```{r}
-
-apply_joliffe_rule(pca)
-
-```
-
-</div>
-
-<div style="padding-right: 80px;">
-
-**Règle de _Cattell_**
-
-```{r}
-
-
-# Afficher le graphique pour appliquer la règle de Cattell
-graph_cattell(pca)
-
-
-```
-
-</div>
-
-</div>
-
-**Constats :**
-À partir du graphique ci-dessous qui expose la règle du 80%, on voit qu'il faut pour expliquer 80% de la variabilité de nos données, conserver `r w[1]` premières composantes. Si nous utilisons la règle de _Joliffe_, qui conserve que les composantes ayant des valeurs propres > 0.7, qui est plus sévère que celle de _Kaiser_, il faut conserver les 9 premières composantes principales. Si nous utilisons plutôt la règle de Cattell, pour faire cette sélection, on observe que les valeurs propres semblent se stabiliser à partir de la composante 10. Nous pourrions, donc, garder que les 9 premières composantes. Pour être conservateurs, nous conservons, donc, les 9 premières composantes.
-
-Nous allons afficher les trois premières composantes avec la variable de débit (qui n'a pas été inclut dans cette analyse des composantes principales). Celles-ci conservent à elles seules plus de 50% de la variabilité du jeu de données. Nous affichons que les `r (nb_var <- 10)` variables qui contribuent le plus à la variabilité de ces composantes.
-
-<div style="display: flex; justify-content: center;">
-
-<div style="padding-right: 80px;">
-
-**Composantes #1 et #2**
-
-```{r, fig.height=6, fig.width=6, fig.align="c"}
-
-
-# Afficher la composante #1 et #2
-graph_pca(pca, nb_var = nb_var) 
-
-
-```
-
-</div>
-
-<div style="padding-right: 80px;">
-
-**Composantes #2 et #3**
-
-```{r, fig.height=6, fig.width=6, fig.align="c"}
-
-
-# Afficher la composante #2 et #3
-graph_pca(pca, components = c(2, 3), nb_var = nb_var)
-
-
-```
-
-</div>
-
-</div>
 
 #### Arbre de décision
 
@@ -490,13 +352,39 @@ vars %>%
 
 Nous pouvons observer qu'en dessous d'une certaine valeur, nous obtenons toujours le même $\sqrt{EQM}$. Comme nous visions à sélectionner des variables avec ce modèle, nous avons pris le $\lambda$ le plus élevé au travers ceux qui ont le plus faible EQM (voir la ligne verticale). Ainsi, nous avons sélectionné un $\lambda$ = `r lasso_model$model$spec$args$penalty`. Avec ce dernier, nous passons, donc, de `r rf_nb_vars` variables à `r lasso_nb_vars`.
 
-#### Modèle mixte
+# Analyse, discussion et conclusion
 
-# Analyse, discussion et conclusion (2-3 pages)
+## Performance des modèles
 
-- Performance des modèles
-- Enjeux éthiques
-- Recommandation du modèle? 
+L'EQM obtenu pour notre jeu de test et, en comparaison, notre jeu d'entraînement :
+
+```{r}
+
+res <- data.table(
+   rmse_train = mixed_model$rmse_train,
+   rmse_val = mixed_model$rmse_test
+)
+
+res %>% 
+   kbl(
+      align = "c", 
+      digits = 3,
+      col.names = c("EQM (entr.)", "EQM (test.)"),
+      booktabs = TRUE, 
+      escape = FALSE
+   ) %>% 
+   kable_classic(
+      full_width = FALSE, 
+      html_font = "Cambria"
+   )
+
+```
+
+
+## Enjeux éthiques
+
+
+## Recommandation du modèle? 
 
 ## Annexe
 
@@ -506,16 +394,18 @@ Tableau 2.1.1 indiquant le nombre et le pourcentage de données manquantes par v
 
 ```{r}
 
+river_dt <- setDT(readRDS(file.path(path_data, "s1_donnees_filtrees.rds")))
+
 # Calcul du pourcentage par variable -------------------------------------------
 
 # Calculer le nombre de données manquantes par variable et conserver que celles avec des données manquantes
 var_missing_data <- unlist(lapply(
-      X = river_dt, 
-      FUN = function(x) {
-         res <- sum(x == -999)
-         if(res != 0) {res} else {NULL}
-      }
-   ))
+   X = river_dt, 
+   FUN = function(x) {
+      res <- sum(x == -999)
+      if(res != 0) {res} else {NULL}
+   }
+))
 
 # Changer les noms des variables 
 names(var_missing_data) <- translate_var(names(var_missing_data))
@@ -633,7 +523,7 @@ R_dt %>%  knitr::kable(
 
 Carte interactive utilisée en vérification des informations données sur les données manquantes par la documentation
 
-```{r}
+```{r, eval = FALSE}
 river_vec <- terra::vect(
    shape_file_path,
    extent = ext(c(-79.85, -55.53, 45.04, 62.80))
@@ -739,9 +629,9 @@ La méthodologie employée pour entraîner ce modèle est composée des étapes 
 1. Séparer le jeu de données en 3 parties
 2. Validation croisée à 3 plis à partir du jeu d'entraînement pour optimiser les hyperparamètres (dans le but de minimiser l'EQM) :
 
-   - Nombre de variables explicatives considérées à chaque embranchement (1, 8, 15) - Sélectionné par validation croisée : `r rf_model$model$mtry`
-   - Nombre d'arbres (100, 300, 500) - Sélectionné par validation croisée : `r rf_model$model$num.trees`
-   - Minimum d'observations dans un noeud (100, 550, 1000) - Sélectionné par validation croisée : `r rf_model$model$min.node.size`
+- Nombre de variables explicatives considérées à chaque embranchement (1, 8, 15) - Sélectionné par validation croisée : `r rf_model$model$mtry`
+- Nombre d'arbres (100, 300, 500) - Sélectionné par validation croisée : `r rf_model$model$num.trees`
+- Minimum d'observations dans un noeud (100, 550, 1000) - Sélectionné par validation croisée : `r rf_model$model$min.node.size`
 
 3. Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation du modèle à partir du jeu de validation
 
@@ -783,9 +673,9 @@ res %>%
 1. Séparer le jeu de données en 3 parties
 2. Validation croisée à 3 plis à partir du jeu d'entraînement pour optimiser les paramètres (le paramètre de profondeur est fixé à 5) :
 
-   - Coût de complexité (0.0000000001, 0.00000316 et 0.1) - Sélection par validation croisée : `r tree_model$model$fit$control$cp` 
-   - Minimum d'observations dans un noeud (100, 550, 1000) - Sélection par validation croisée : `r tree_model$model$fit$control$minsplit`
-   
+- Coût de complexité (0.0000000001, 0.00000316 et 0.1) - Sélection par validation croisée : `r tree_model$model$fit$control$cp` 
+- Minimum d'observations dans un noeud (100, 550, 1000) - Sélection par validation croisée : `r tree_model$model$fit$control$minsplit`
+
 3. Entraînement du modèle à partir du jeu d'entraînement avec les hyperparamètres optimaux et évaluation du modèle à partir du jeu de validation
 
 - **Résultats**
@@ -909,5 +799,94 @@ res %>%
 
 ```
 **Constats :** L'EQM est de `r round(lasso_model$rmse_val[[1]]$.estimate[1], 2)` sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la valeur observée est  $\sqrt{EQM}$ = ~`r round(sqrt(lasso_model$rmse_val[[1]]$.estimate[1]), 2)`. On remarque que l'on a un EQM plus élevé qu'avec la forêt aléatoire. Toutefois, rappelons que bien que le modèle que nous allons proposer est peut-être moins performant, le modèle est beaucoup plus interprétable.
+
+### A.5 Modèle mixte {#mixte}
+
+- **Méthodologie** :
+
+La méthodologie employée pour entraîner ce modèle est composée des étapes suivantes :
+
+1. Séparer le jeu de données en 2 parties (jeu d'entraînement et jeu de test)
+2. Identification des effets aléatoires à tester
+À partir du modèle _Lasso_ qui ne contient aucun effet aléatoire, nous avons regardé les graphiques des résidus par rapport à différentes variables pour avoir un indication si des effets aléatoires seraient nécessaires, et ce, au travers la structure de dépendance basée sur la rivière commune en aval. Nous observons avec les graphiques suivants qu'une ordonnée à l'origine aléatoire ainsi que des pentes aléatoires pour les variables _ria_ha_csu_ (aire de la rivière) et _riv_tc_usu_ (volume de la rivière) seraient pertinentes à tester :
+
+```{r}
+
+mixed_model$graphs_res$res_vs_var$ria_ha_csu
+
+```
+
+```{r}
+
+mixed_model$graphs_res$res_vs_var$riv_tc_usu
+
+```
+
+
+3. Choix de la structure de covariance
+
+Pour valider les effets aléatoires que nous suggère les graphiques, nous testons différents modèles que nous soumettons à des tests du rapport de vraisemblance pour choisir le modèle le plus complexe qui est justifié d'utiliser selon ce test :
+
+$$H_0 = \text{Modèle simple}$$
+$$H_1 = \text{Modèle plus complexe}$$
+Les modèles testés sont les suivants :
+
+1. Modèle avec une ordonnée à l'origine aléatoire
+2. Modèle avec une ordonnée à l'origine aléatoire et une pente aléatoire pour la variable _ria_ha_csu_ (sans corrélation, ce qui implique que la matrice de variance-covariance est diagonale)
+3. Modèle avec une ordonnée à l'origine aléatoire et une pente aléatoire pour la variable _ria_ha_csu_ (avec corrélation, chaque combinaison d'effets aléatoires a un coefficient de corrélation différent)
+4. Modèle avec une ordonnée à l'origine aléatoire et des pentes aléatoires pour les variables _ria_ha_csu_ et _riv_tc_usu_ (sans corrélation)
+5. Modèle avec une ordonnée à l'origine aléatoire et des pentes aléatoires pour les variables _ria_ha_csu_ et _riv_tc_usu_ (avec corrélation)
+
+
+```{r}
+
+dt <- data.table(
+   model = c("Modèles 1 vs 2", "Modèles 2 vs 3", "Modèle 3 vs 4", "Modèle 4 vs 5"),
+   p_value = fifelse(sapply(mixed_model$rapport_vrais_test, function(x) {x$`Pr(>Chisq)`[2]}) < 0.001, "< 2.2e-16", "")
+)
+
+dt %>% 
+   knitr::kable(
+      col.names = c("Modèles comparés", "P-valeur"), 
+      align = rep("c", 2)
+   ) %>% 
+   kableExtra::kable_classic(
+      full_width = FALSE, 
+      html_font = "Cambria"
+   )
+
+```
+Notre modèle final a, donc, la forme :
+
+$$\boldsymbol{Y} = \boldsymbol{X}\boldsymbol{\beta} + \boldsymbol{Z}\boldsymbol{\gamma} + \boldsymbol{\epsilon}$$
+
+$$\boldsymbol{\gamma}_{\text{main_riv}} = \begin{bmatrix}
+\gamma_{\beta_0\text{, main_riv1}}\\
+\gamma_{\beta_1\text{, main_riv1}}\\
+\gamma_{\beta_2\text{, main_riv1}}\\
+\gamma_{\beta_0\text{, main_riv2}}\\
+... \\
+\gamma_{\beta_2\text{, main_riv3844}}\\
+\end{bmatrix}_{11532 \times 1}$$
+
+Où 
+
+- $\beta_0$ est lié à l'ordonnée à l'origine
+- $\beta_1$ est lié la pente de la variable _ria_ha_csu_
+- $\beta_2$ est lié à la pente de la variable _riv_tc_usu_
+
+Ces effets aléatoires ont une matrice de variance-covariance telle que : 
+$$\begin{bmatrix}
+\sigma^2_{\beta_0}~~~\rho_{\beta_0, \beta_1}\sigma_{\beta_0}\sigma_{\beta_1}~~~\rho_{\beta_0, \beta_2}\sigma_{\beta_1}\sigma_{\beta_2}\\
+\rho_{\beta_0, \beta_1}\sigma_{\beta_0}\sigma_{\beta_1}~~~\sigma^2_{\beta_1}~~~\rho_{\beta_1, \beta_2}\sigma_{\beta_1}\sigma_{\beta_2}\\
+\rho_{\beta_3, \beta_0}\sigma_{\beta_3}\sigma_{\beta_0}~~~\rho_{\beta_3, \beta_2}\sigma_{\beta_3}\sigma_{\beta_2}~~~\sigma^2_{\beta_3}
+\end{bmatrix}$$
+
+4. Évaluation du modèle 
+
+Nous présentons les résultats du modèle dans la section _Analyse, discussion et conclusion_.
+
+
+
 
 
