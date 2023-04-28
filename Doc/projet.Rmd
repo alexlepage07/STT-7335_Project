@@ -379,7 +379,37 @@ res %>%
    )
 
 ```
-Comme indiqué dans le tableau ci-dessus, l'Erreur Quadratique Moyenne du modèle linéaire mixte vaut 0.194 sur le jeu d'entraînement et 0.198 sur le jeu de test. Ainsi, la différence entre les EQM sur les jeux d'entraînement et de test est faible, ce qui suggère que le modèle généralise très bien sur de nouvelles données. 
+
+On présente également la décomposition biais-variance pour les jeux d'entraîenemnt et de test :
+
+
+```{r}
+
+res2 <- data.table(ech = c("Entraînement", "Test"),
+    rmse = c(mixed_model$rmse_train,mixed_model$rmse_test),
+   biais = c(mixed_model$bias_train, mixed_model$bias_test),
+   var = c(mixed_model$var_train, mixed_model$var_test),
+   var_irr = c(mixed_model$rmse_train - mixed_model$bias_train - mixed_model$var_train, mixed_model$rmse_test - mixed_model$bias_test - mixed_model$var_test)
+)
+
+res2 %>% 
+   kbl(
+      align = "c", 
+      digits = 3,
+      col.names = c("Echantillon", "RMSE", "Biais", "Variance", "Variance irréductible"),
+      booktabs = TRUE, 
+      escape = FALSE
+   ) %>% 
+   kable_classic(
+      full_width = FALSE, 
+      html_font = "Cambria"
+   )
+   
+```
+
+Comme indiqué dans le tableau ci-dessus, l'Erreur Quadratique Moyenne du modèle linéaire mixte vaut 0.194 sur le jeu d'entraînement et 0.198 sur le jeu de test. Ainsi, la différence entre les EQM sur les jeux d'entraînement et de test est faible, ce qui suggère que le modèle généralise très bien sur de nouvelles données.
+
+Après avoir décomposé l'EQM, on s'aperçoit que le biais est très faible : de l'ordre de 0.037 pour l'échantillon d'entraînement, et de 0.039 pour l'échantillon de test. Ainsi, on peut en conclure que le modèle ajusté est non biaisé pour nos données.
 
 A titre de comparaison, la forêt aléatoire ajustée plus haut possédait une EQM de 0.139 sur le jeu d'entraînement, et de 0.162 sur le jeu de test. Ainsi, bien que le modèle linéaire mixte généralise mieux que la forêt aléatoire, il semble globalement moins bien performer. Cela pourrait s'expliquer par le fait que le modèle linéaire mixte ne prend pas en compte les interactions non-linéaires entre les variables, contrairement à la forêt aléatoire. De plus, il se peut que la différence des variables prises en compte dans les deux modèles joue un rôle dans la différence d'EQM de ces derniers. En effet, il est possible que certaines variables non sélectionnées par le LASSO (mais incluses à l'étape de la forêt aléatoire) car elles avaient un effet principal non significatifs soient pertinentes de par leur interaction avec d'autres variables du modèle.
 
