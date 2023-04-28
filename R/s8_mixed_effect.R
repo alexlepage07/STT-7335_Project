@@ -21,7 +21,7 @@
 # Fonctions --------------------------------------------------------------------
 
 
-source("./R/utils.R")
+source("../R/utils.R")
 
 
 # Librairies -------------------------------------------------------------------
@@ -37,9 +37,9 @@ inst_load_packages(libs)
 # Chemins d'accès --------------------------------------------------------------
 
 
-input_path <- "Data/s7_donnees_lasso_var_sel.rds"
-output_path_obj <- "inst/s8_mixed_effect.rds"
-lasso_model_path <- "inst/s7_lasso.rds"
+input_path <- "../Data/s7_donnees_lasso_var_sel.rds"
+output_path_obj <- "../inst/s8_mixed_effect.rds"
+lasso_model_path <- "../inst/s7_lasso.rds"
 
 
 # Charger le jeu de données ----------------------------------------------------
@@ -273,6 +273,10 @@ graphs_res <- list(
 info_ls <- list(
    rmse_test = MLmetrics::RMSE(predict(final_model, test_dt, allow.new.levels = TRUE), test_dt$dis_m3_pyr),
    rmse_train = MLmetrics::RMSE(predict(final_model, train_dt, allow.new.levels = TRUE), train_dt$dis_m3_pyr),
+   bias_test = mean((test_dt$dis_m3_pyr - predict(final_model, test_dt, allow.new.levels = TRUE))^2),
+   bias_train = mean((train_dt$dis_m3_pyr - predict(final_model, train_dt, allow.new.levels = TRUE))^2),
+   var_test = var(predict(final_model, test_dt, allow.new.levels = TRUE)),
+   var_train = var(predict(final_model, train_dt, allow.new.levels = TRUE)),
    graphs_res = graphs_res,
    final_model = final_model,
    rapport_vrais_test = rapport_vrais_test
