@@ -292,16 +292,18 @@ Pour sélectionner les variables, plusieurs options s'offrent à nous. Nous pouv
 
 #### Arbre de décision
 
-Nous avons entraîné un arbre de décision pour sélectionner les interactions les plus importantes à tester. Pour ce faire, nous avons fixé l'arbre de décision a une profondeur de 5 pour que ça reste interprétable. Puis, nous avons optimisé le reste des hyperparamètres par validation croisée sur le jeu d'entraînement (pour plus de détails sur la méthodologie et les performances du modèle, voir la section en [annexe](#decision_tree)). Nous voyons que l'arbre dans les premiers niveaux utilise très fréquemment la variable `r translate_var("riv_tc", suffixe = FALSE)` et, dans les niveaux suivants, l'`r translate_var("ria_ha", suffixe = FALSE)` ressort souvent. Nous allons tester dans le modèle _Lasso_ l'interaction entre ces deux variables. Des interactions qui arrivent qu'une fois que nous allons tester, également, sont : 
+Nous avons entraîné un arbre de décision pour sélectionner les interactions les plus importantes à tester. Pour se faire, nous avons fixé l'arbre de décision a une profondeur de 5 pour qu'il reste interprétable. Puis, nous avons optimisé le reste des hyper-paramètres par validation croisée sur le jeu d'entraînement (pour plus de détails sur la méthodologie et les performances du modèle, voir la section en [annexe](#decision_tree)). Nous voyons que l'arbre dans les premiers niveaux utilise très fréquemment la variable `r translate_var("riv_tc", suffixe = FALSE)` et, dans les niveaux suivants, l'`r translate_var("ria_ha", suffixe = FALSE)` ressort souvent. Nous allons tester dans le modèle _Lasso_ l'interaction entre ces deux variables. Des interactions qui arrivent qu'une fois que nous allons tester, également, sont : 
 
 - `r translate_var("ria_ha", suffixe = FALSE)`  + `r translate_var("riv_cross_area", suffixe = FALSE)`
 - `r translate_var("ria_ha", suffixe = FALSE)`  + `r translate_var("riv_larg", suffixe = FALSE)`
 
 Pour voir l'arbre obtenu, voir l'[annexe](#decision_tree).
 
+
 #### Modèle _Lasso_
 
-Nous utilisons un modèle _Lasso_ pour compléter notre sélection de variables. Ce modèle, étant donné la contrainte sur la somme de ses coefficients, a l'avantage de venir de contracter certains coefficients à 0 et faire, par ricochet, une sélection de variables. Par ailleurs, le modèle a l'avantage de gérer les situations où nous avons deux variables fortement corrélées. En effet, dans une régression normale avec deux variables très corrélées, l'un pourrait recevoir un coefficient positif élevé et l'autre un coefficient négatif pour capturer l'effet commun aux deux variables.^[he elements of statistical learning : data mining, inference, and prediction, p. 63]. Dans un modèle _Lasso_, le coefficient de l'une de ces 2 variables sera mis à 0 éliminant l'une des variables et gérant la situation de colinéarité. En [annexe](#lasso), nous décrivons plus en détail ce modèle, notre méthodologie pour entraîner le modèle et la performance de ce dernier.
+Nous utilisons un modèle _Lasso_ pour compléter notre sélection de variables. 
+Ce modèle, ayant comme caractéristique d'utiliser une régularisation avec la norme L1, permet de réduire les poids des variables les moins utiles à zéro. Ce faisant, il permet d'effectuer une  sélection de variables. Par ailleurs, le modèle a l'avantage de gérer les situations où nous avons deux variables fortement corrélées. En effet, dans une régression normale avec deux variables très corrélées, l'un pourrait recevoir un coefficient positif élevé et l'autre un coefficient négatif pour capturer l'effet commun aux deux variables.^[he elements of statistical learning : data mining, inference, and prediction, p. 63]. Dans un modèle _Lasso_, le coefficient de l'une de ces 2 variables sera mis à 0 éliminant l'une des variables et gérant la situation de colinéarité. En [annexe](#lasso), nous décrivons plus en détail ce modèle, notre méthodologie pour entraîner le modèle et la performance de ce dernier.
 
 Avant de faire ce modèle, nous avons fait une modèle additif généralisé (_GAM_) pour ajouter au modèle _Lasso_ certaines transformations polynomiales. Le modèle Lasso a conservé 3 transformations polynomiales de degré 2 pour les variables  : `r tolower(paste(translate_var(lasso_model$var_poly), collapse = ", "))`. Pour plus de détails, se référer à l'[annexe](#lasso). De plus, le modèle a sélectionné l'interaction : `r translate_var("riv_tc", suffixe = FALSE)` x l'`r translate_var("ria_ha", suffixe = FALSE)`.
 
@@ -389,16 +391,22 @@ res %>%
 
 ## Enjeux éthiques
 
-Il y a très peu d’aspects éthiques liés au projet en lui-même. Les données utilisées ne sont ni privées ni sensibles, l’objectif du projet est de prédire des débits d’eau, donc rien de vraiment problématique niveau éthique.
+Comme l'objectif est de prédire des débits d'eau, il  y a très peu aspects éthiques liés au projet. 
 
-Concernant la transparence, nous avons documenté toutes les justifications et les explications concernant les méthodes utilisées dans le projet et leur pertinence. Le traitement des données manquantes a été justifié lorsqu’il le fallait et les performances de nos modèles ont été quantifiées. 
+Néanmoins, si l'aboutissement de notre travail pouvait servir au milieu de l'assurance, cela contribuerait à préciser la tarification des couvertures pour le risque d'inondation. Conséquemment, on pourrait observer une prime d'assurance plus basse à certains endroits et plus hautes à d'autres. L'enjeu éthique, dans ce cas, se refléterait dans le risque d'anti-sélection (équité) puisque la prime deviendrait juste trop chère pour les personnes les plus à risque. Or, dans les régions éloignées (précisément les endroits qui justifient l'utilisation de notre projet), les gens ont des revenus plus faibles qu'à proximité des grands centres. On parle entre autre des populations autochtones. Ces personnes ainsi exposées ne sont pas en mesure de payer une prime élevée et il peut parfois être impossible de relocaliser leur domicile. 
 
-Le plus gros enjeu éthique réside dans l’utilisation du projet. La prédiction des débits d’eau peut être utilisée dans le domaine de l’assurance, là où l’assureur voudra rentabiliser et éviter les grosses pertes liées aux sinistres des assurés. L’assureur pourra donc procéder à une adaptation du prix de l’offre voire même une suppression de certaines zones géographiques de l’offre. Du point de vue de l’assureur, ce sera une très bonne chose car des économies seront faites grâce à l’utilisation du modèle (on peut penser aux zones inondables par exemple). Du point de vue des habitants, selon leur localisation ils verront le coût de leur assurance grimper ou seront exclus de l’offre. Assurer sa propriété est obligatoire, alors ces habitants (notamment les plus précaires) se retrouveront dans une situation financière et contractuelle compliquée. 
-
-Cet exemple permet de conclure que le projet respecte globalement les différents principes de l’éthique mais son utilisation, notamment en assurance, peut porter atteinte à l’équité. 
+En revanche, sur ce point, le modèle n'est pas responsable de leur forte exposition au risque, mais seulement de l'habilité à identifier les zones de risque. Finalement, si nous sommes en mesure de bien identifier les zones de risque, il sera possible de travailler en partenariat avec les municipalités et avec les instances gouvernementales pour protéger ces personnes vulnérable par des subventions pour la relocalisation ou pour l'adaptation au risque.
+En somme, ce modèle peut apporter à la fois un problème et une solution. Il s'agira alors de savoir en tirer le meilleur usage.
 
 
 ## Recommandation du modèle? 
+
+En somme, nous avons démontré que certaines variables peuvent effectivement être utiles pour prédire les débits d'eau annuels moyens. Cependant, étant données la forme des termes d'erreurs et l'erreur quadratique moyen plus élevé avec le modèle final qu'avec la forêt aléatoire utilisée pour la pré-sélection des variables explicatives, nous concluons qu'un modèle linéaire n'est pas le choix le plus optimal pour capturer les interactions entre les différentes variables du modèle. À ce titre, il aurait sans doute été préférable d'utiliser une forêt aléatoire mixte (voir [Hajjem et al., 2014](@mixedRandomForest2014)) qui comporterait des effets aléatoires, au même titre que le modèle mixte proposé.
+
+Également, comme il est mentionné en introduction, ce modèle, tel qu'il est présenté, n'est pas utile pour créer des cartes d'inondation. Afin de pouvoir définir des zones de risque, il faudrait pouvoir évaluer des quantiles pour des périodes de retour. Une option à envisager serait d'extraire des données de stations hydrologiques^[https://wateroffice.ec.gc.ca/map/index_e.html?type=real_time], puis il deviendrait envisageable d'apparier les observations de ces stations aux variables explicatives utilisées dans ce projet. Avec un tel jeu de données, il pourrait alors être possible d'entraîner un modèle de régression par quantile tel que celui proposé dans [Pasche et al., 2022](@ExtremeQuantileNeuralNetwork2022). En ce qui attrait à la régression par quantile, en général, on peut se référer à [Koenker et al., 2017](@quantileRegression2017). De plus, l'idée de ce type de modèle est également applicable aux forêts aléatoire, même lorsque les variables étudiées comportent une queue de distribution très épaisse. À ce titre, voir [Gnecco et al., 2022](@ExtremeRandomForest2022)
+
+Finalement, la combinaison des modèles proposés par [Hajjem et al., 2014](@mixedRandomForest2014)) et par [Gnecco et al., 2022](@ExtremeRandomForest2022) pourrait sans doute constituer une avenue optimale. Comme rien n'est encore fait à ce sujet dans la littérature, cela pourrait constituer un sujet de recherche prometteur.
+
 
 ## Annexe
 
@@ -651,6 +659,7 @@ table_ind_cond(ind_cond$ind_cond_4)
 
 Nous arrêtons les itérations, ici, car à partir de cette itération, nous n'avons plus de variable à retirer selon ce diagnostique.
 
+
 ### A.3 Forêt aléatoire {#random_forest}
 
 - **Méthodologie**
@@ -696,6 +705,7 @@ res %>%
 
 - Moyenne : `r round(mean(river_dt$dis_m3_pyr), 3)`
 - Écart-type : `r round(sd(river_dt$dis_m3_pyr), 3)`
+
 
 ### A.4 Arbre de décision {#decision_tree}
 
@@ -744,6 +754,7 @@ res %>%
 ```
 
 **Constats :** On voit que notre modèle ne semble pas être en surapprentissage. L'EQM est de `r round(tree_model$rmse_val[[1]]$.estimate[1], 2)` sur notre jeu de données de validation. Or, cela implique qu'en moyenne l'écart de nos prédictions avec la valeur observée est  $\sqrt{EQM}$ = ~`r round(sqrt(tree_model$rmse_val[[1]]$.estimate[1]), 2)`. On voit sans surprise que cette arbre de décision a surappris.
+
 
 ### A.5 Modèle _Lasso_ {#lasso}
 
