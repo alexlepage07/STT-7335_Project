@@ -144,6 +144,11 @@ Dans la documentation du jeu de données, il est précisé que les valeurs manqu
 
 #### Identification du mécanisme de non-réponse
 
+```{r}
+river_dt[, patron := 0]
+river_dt[is.na(snd_pc_uav), patron := 1]
+```
+
 Nous faisons une analyse préliminaire pour évaluer si les données sont manquantes de façon complètement aléatoire. Pour ce faire, nous commençons à comparer les graphique de la distribution de variables explicatives pour les observations qui ne font pas parties du patron (`patron = 0`) au graphique de la même variable mais avec les observations qui font partie de ce patron (`patron = 1`). Nous montrons en annexe A1 quelques exemples de variables dont la distribution changent en fonction de si les observations font parties du patron ou non (débit d'eau moyen, proportion occupée par des forêts...) ce qui suggère que nous ne sommes pas en présence de valeurs manquantes complètement aléatoire. 
 
 Cette analyse préliminaire des distributions suggère que nous ne sommes pas en présence de données manquantes de façon complètement aléatoire puisque visuellement les distributions de variables pour les données observées et les données manquantes sont différentes.
@@ -550,11 +555,6 @@ leaflet(river_vec[river_vec$slt_pc_uav == -999, ]) %>%
 ```
 
 Graphiques justifiant que les données manquantes ne sont pas Missing Completely At Random
-
-```{r}
-river_dt[, patron := 0]
-river_dt[is.na(snd_pc_uav), patron := 1]
-```
 
 ::: columns 
 
