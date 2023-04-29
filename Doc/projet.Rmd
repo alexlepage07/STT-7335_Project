@@ -150,6 +150,12 @@ Cette analyse préliminaire des distributions suggère que nous ne sommes pas en
 
 Pour poursuivre notre analyse, nous exposons dans le tableau 2.1.4 (Annexe A1) l'ensemble des _test-t_'s possibles pour comparer la moyenne des autres variables pour les observations faisant parties du patron et celle pour les observations ne faisant pas parties du patron.
 
+```{r,echo=FALSE}
+
+# Calculer les test-t's
+t_test_res <- t_test_by_patron(river_dt, "patron")
+```
+
 Nous remarquons que 39 tests ont un seuil observé en dessous de 5%. Cela signifie que pour ces tests la moyenne de la variable évaluée est significativement différente en présence ou non du patron de non-réponse.
 
 En revanche, faire autant de _test-t_'s a ses limites. En effet, puisque nous faisons au total 44, nous avons le problème de comparaisons multiples qui implique que, même si toutes les moyennes étaient réellement égales, une partie des tests seraient rejetée. Or, dans notre cas, une très grande partie le sont ce qui appuie notre hypothèse comme quoi les données ne sont pas manquantes complètement aléatoirement.
@@ -596,6 +602,23 @@ L'érosion des sols semble être moins élevée pour les données manquantes.
 ::::
 
 :::
+
+Tableau 2.1.4  résumant les seuils obtenus pour les t_test afin de determiner le patron de non-réponse
+```{r}
+
+# Afficher sous forme de tableau les seuils observés des tests de comparaison 
+# de moyenne
+t_test_res[order(p_value, decreasing = TRUE)] %>%  knitr::kable(
+   align = c("l", "c"),
+   col.names = c("Variable", 
+                 "Seuil observé"),
+   caption = "Tableau 2.1.4 - Seuil observé pour les tests t entre les valeurs dans le patron et celles pas dans ce patron"
+) %>% kable_classic(
+   full_width = TRUE, 
+   html_font = "Cambria"
+) 
+
+```
 
 
 ### A.2 Diagnostique de multicolinéarité {#multicolinearity}
